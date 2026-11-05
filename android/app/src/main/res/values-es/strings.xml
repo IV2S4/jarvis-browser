@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pide_camara">Esta página quiere usar tu cámara o micrófono.</string>
+    <string name="pide_ubicacion">Esta página quiere saber tu ubicación.</string>
+    <string name="permitir">Permitir</string>
+    <string name="no_permitir">Bloquear</string>
+    <string name="descarga_no">Esta descarga no se puede guardar desde aquí.</string>
+    <string name="descarga_fallo">No se pudo empezar la descarga.</string>
+</resources>

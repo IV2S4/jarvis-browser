@@ -1,0 +1,23 @@
+# dependencias y compilados
+node_modules/
+desktop/salida/
+desktop/.obra/
+android/.gradle/
+android/build/
+android/app/build/
+android/salida/
+android/local.properties
+android/.idea/
+*.apk
+*.aab
+*.exe
+*.blockmap
+
+# llaves y firmas: nunca al repositorio
+*.jks
+*.keystore
+*.pfx
+*.p12
+firma.properties
+.env
+.env.*

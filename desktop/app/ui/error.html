@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8" /><title>Sin conexión</title>
+<style>
+  html,body{height:100%;margin:0;background:#03080e;color:#d8f3ff;font-family:Rajdhani,Inter,sans-serif;display:grid;place-items:center}
+  .c{text-align:center;max-width:560px;padding:20px}
+  .r{width:110px;height:110px;margin:0 auto 26px;position:relative}
+  .r i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,92,122,.25);border-top-color:#ff5c7a;animation:g 3s linear infinite}
+  .r i:nth-child(2){inset:16px;border-style:dashed;border-color:rgba(56,214,255,.4);animation-duration:6s;animation-direction:reverse}
+  .r b{position:absolute;inset:40px;border-radius:50%;background:radial-gradient(circle,#ffd0da,#ff5c7a 60%,transparent 80%);box-shadow:0 0 22px #ff5c7a}
+  h1{font:700 18px Orbitron,sans-serif;letter-spacing:5px;color:#ff8aa0;margin:0 0 12px}
+  p{color:#8fb3c6;font-size:16px;margin:6px 0}
+  code{color:#38d6ff;word-break:break-all}
+  button{margin-top:22px;padding:10px 22px;border-radius:8px;border:1px solid #38d6ff;background:rgba(56,214,255,.12);color:#e8f7ff;font:600 15px Rajdhani,sans-serif;letter-spacing:1px;cursor:pointer}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style></head>
+<body><div class="c"><div class="r"><i></i><i></i><b></b></div>
+<h1>ENLACE PERDIDO</h1><p>No pude abrir <code id="u"></code></p><p id="d"></p>
+<p>Revise el internet o la dirección. También puede decirme «Jarvis, recarga».</p>
+<button onclick="location.href=new URLSearchParams(location.search).get('u')||'about:blank'">Reintentar</button></div>
+<div id="http" style="display:none;margin-top:18px;padding:14px;border:1px solid rgba(255,200,97,.5);border-radius:10px;background:rgba(255,200,97,.08)">
+<p style="color:#ffc861">⚠ Puede que esta página no tenga conexión segura (HTTPS). Lo que escribas ahí podría verse por otros en la red.</p>
+<button id="igual" style="border-color:#ffc861;background:rgba(255,200,97,.12)">Abrir de todas formas (no seguro)</button></div>
+<script>const q=new URLSearchParams(location.search);document.getElementById('u').textContent=q.get('u')||'';document.getElementById('d').textContent=q.get('d')||'';
+if(q.get('http')){document.getElementById('http').style.display='block';document.getElementById('igual').onclick=()=>{location.href=(q.get('u')||'').replace(/^https:/,'http:');};}</script>
+</body></html>

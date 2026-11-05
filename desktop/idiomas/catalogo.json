@@ -1,0 +1,93 @@
+{
+ "es": {
+  "nombre": "Español",
+  "locale": "es_US.UTF-8",
+  "teclado": "latam",
+  "edge": "",
+  "piper": [
+   "es_MX-ald-medium"
+  ],
+  "paquetes": [
+   "language-pack-es",
+   "hunspell-es"
+  ],
+  "completo": true
+ },
+ "en": {
+  "nombre": "English",
+  "locale": "en_US.UTF-8",
+  "teclado": "us",
+  "edge": "en-GB-RyanNeural",
+  "piper": [
+   "en_GB-alan-medium",
+   "en_US-ryan-medium",
+   "en_US-lessac-medium"
+  ],
+  "paquetes": [
+   "language-pack-en",
+   "hunspell-en-us"
+  ],
+  "completo": true
+ },
+ "pt": {
+  "nombre": "Português (Brasil)",
+  "locale": "pt_BR.UTF-8",
+  "teclado": "br",
+  "edge": "pt-BR-AntonioNeural",
+  "piper": [
+   "pt_BR-faber-medium",
+   "pt_BR-edresson-low"
+  ],
+  "paquetes": [
+   "language-pack-pt",
+   "hunspell-pt-br"
+  ],
+  "completo": true
+ },
+ "fr": {
+  "nombre": "Français",
+  "locale": "fr_FR.UTF-8",
+  "teclado": "fr",
+  "edge": "fr-FR-HenriNeural",
+  "piper": [
+   "fr_FR-tom-medium",
+   "fr_FR-upmc-medium",
+   "fr_FR-siwis-medium"
+  ],
+  "paquetes": [
+   "language-pack-fr",
+   "hunspell-fr"
+  ],
+  "completo": true
+ },
+ "de": {
+  "nombre": "Deutsch",
+  "locale": "de_DE.UTF-8",
+  "teclado": "de",
+  "edge": "de-DE-ConradNeural",
+  "piper": [
+   "de_DE-thorsten-medium",
+   "de_DE-karlsson-low"
+  ],
+  "paquetes": [
+   "language-pack-de",
+   "hunspell-de-de"
+  ],
+  "completo": true
+ },
+ "it": {
+  "nombre": "Italiano",
+  "locale": "it_IT.UTF-8",
+  "teclado": "it",
+  "edge": "it-IT-DiegoNeural",
+  "piper": [
+   "it_IT-riccardo-x_low",
+   "it_IT-paola-medium"
+  ],
+  "paquetes": [
+   "language-pack-it",
+   "hunspell-it"
+  ],
+  "completo": true
+ }
+}

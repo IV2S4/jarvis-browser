@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">JARVIS Browser</string>
+    <string name="pide_camara">This site wants to use your camera or microphone.</string>
+    <string name="pide_ubicacion">This site wants to know your location.</string>
+    <string name="permitir">Allow</string>
+    <string name="no_permitir">Block</string>
+    <string name="descarga_no">This download can\'t be saved from here.</string>
+    <string name="descarga_fallo">The download couldn\'t start.</string>
+</resources>

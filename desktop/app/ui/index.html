@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http: file:; script-src 'self' jarvisvoz: 'wasm-unsafe-eval' 'unsafe-eval' blob:; worker-src 'self' blob:; connect-src 'self' jarvisvoz: blob: data:; media-src blob:" />
+  <title>Navegador JARVIS</title>
+  <link rel="stylesheet" href="estilo.css" />
+</head>
+<body>
+  <div id="fondo"></div>
+
+  <!-- fila 1: emblema + pestañas + ventana -->
+  <header id="pestanas-fila">
+    <div id="emblema" title="Navegador JARVIS">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="e-a" cx="32" cy="32" r="29" />
+        <circle class="e-b" cx="32" cy="32" r="22" />
+        <circle class="e-c" cx="32" cy="32" r="15" />
+        <path class="e-d" d="M32 21 L41.5 26.5 L41.5 37.5 L32 43 L22.5 37.5 L22.5 26.5 Z" />
+        <circle class="e-n" cx="32" cy="32" r="4.5" />
+      </svg>
+      <span>JARVIS</span>
+    </div>
+    <nav id="pestanas"></nav>
+    <button id="mas" title="Pestaña nueva (Ctrl+T)">+</button>
+    <button id="privada" title="Pestaña privada: no guarda nada (Ctrl+Mayús+N)">🕶</button>
+    <div class="arrastre"></div>
+    <div id="ventana">
+      <button data-v="min" title="Minimizar"><i class="v-min"></i></button>
+      <button data-v="max" title="Maximizar"><i class="v-max"></i></button>
+      <button data-v="salir" class="v-cerrar" title="Cerrar"><i class="v-x"></i></button>
+    </div>
+  </header>
+
+  <!-- fila 2: barra de dirección -->
+  <section id="barra">
+    <div class="nav">
+      <button id="b-atras" title="Atrás (Alt+←)"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg></button>
+      <button id="b-adelante" title="Adelante (Alt+→)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg></button>
+      <button id="b-recargar" title="Recargar (F5)"><svg viewBox="0 0 24 24"><path class="r-flecha" d="M19 12a7 7 0 1 1-2.05-4.95M19 4v4h-4" /><path class="r-x" d="M7 7l10 10M17 7L7 17" /></svg></button>
+      <button id="b-inicio" title="Inicio"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 9.5V20h12V9.5" /></svg></button>
+    </div>
+    <form id="omni">
+      <span class="esq e1"></span><span class="esq e2"></span><span class="esq e3"></span><span class="esq e4"></span>
+      <span id="seguro" class="seguro">SEGURO</span>
+      <button type="button" id="escudo" hidden title="Escáner de amenazas"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z" /></svg><b id="escudo-n">0</b></button>
+      <input id="direccion" spellcheck="false" autocomplete="off" placeholder="Busca con Google o escribe una dirección" />
+      <span id="zoom" hidden></span>
+      <button type="button" id="b-fav" title="Favorito (Ctrl+D)"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z" /></svg></button>
+    </form>
+    <div id="sugerencias" hidden></div>
+    <div id="buscar-en" hidden><input id="buscar-texto" placeholder="Buscar en la página" /><span id="buscar-n"></span><button id="buscar-cerrar" title="Cerrar">×</button></div>
+    <div class="der">
+      <button id="b-pip" title="Video flotante (Ctrl+Mayús+V)"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><rect x="12" y="11" width="7" height="6" rx="1" class="lleno" /></svg></button>
+      <button id="b-dividir" title="Pantalla dividida (Ctrl+Mayús+S)"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M12 5v14" /></svg></button>
+      <button id="b-descargas" title="Descargas"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg><b id="desc-n" hidden></b></button>
+      <button id="b-config" title="Configuración (Ctrl+,)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.8v2.4M12 18.8v2.4M4.2 7.5l2.1 1.2M17.7 15.3l2.1 1.2M4.2 16.5l2.1-1.2M17.7 8.7l2.1-1.2" /><circle cx="12" cy="12" r="7.2" /></svg></button>
+      <button id="b-jarvis" title="Asistente JARVIS (Ctrl+J)"><span class="orbe"><i></i><i></i><i></i></span><span class="b-txt">JARVIS</span></button>
+    </div>
+    <div id="carga"><i></i></div>
+  </section>
+
+  <!-- barra de avisos: permisos, ventanas emergentes -->
+  <div id="infobar" hidden><span class="ib-ico" id="ib-ico">🛡</span><span id="ib-texto"></span><span class="ib-botones" id="ib-botones"></span></div>
+
+  <!-- panel del asistente -->
+  <aside id="panel" hidden>
+    <div class="p-cab">
+      <div class="reactor"><i></i><i></i><i></i><b></b></div>
+      <div><h2>ASISTENTE JARVIS</h2><small id="p-pagina">Lee y entiende esta página por ti</small></div>
+    </div>
+    <div class="p-tabs"><button data-p="jarvis" class="activo">Chat</button><button data-p="chat">Página</button><button data-p="favs">Favoritos</button><button data-p="desc">Descargas</button><button data-p="escaner">Escáner</button></div>
+    <div class="p-cuerpo" id="p-jarvis">
+      <div id="apagado" hidden><span id="apagado-txt">El cerebro de JARVIS está apagado.</span> <button id="encender">Encender JARVIS</button><button id="poner-llave" hidden>Poner llave</button></div>
+      <div id="vista" hidden><img id="vista-img" alt="" /><small id="vista-txt"></small></div>
+      <div id="doc-barra" hidden><span>📄 <b>Documento</b><small>Pregúntale lo que quieras sobre él</small></span>
+        <div class="chips"><button data-doc="Resume este documento: de qué trata y sus puntos clave.">Resumir</button><button data-doc="Dame los puntos clave de este documento en una lista.">Puntos clave</button><button data-doc="Hazme un cuestionario de 5 preguntas de opción múltiple sobre este documento, con las respuestas al final.">Cuestionario</button><button data-doc="Explícame este documento como si tuviera 12 años.">Explícamelo fácil</button></div></div>
+      <div id="charla2"><div class="msg j">Hola, señor. Pídame lo que quiera: buscar algo, abrir páginas, resumir o traducir esta página, o «¿qué ves?». Mientras trabajo, aquí arriba ve lo que estoy mirando.</div></div>
+      <div class="rapidos chips"><button id="c-resumir">Resumir</button><button id="c-traducir">Traducir página</button><button id="c-ves">¿Qué ves?</button><button id="c-telefono">Enviar al teléfono</button><button id="c-doc" title="PDF, Word o texto de tu PC (Ctrl+O)">📄 Abrir documento</button><button id="c-nuevo">Nuevo chat</button></div>
+      <form id="p-form2"><button type="button" id="p-mic" title="Hablar">🎙</button><input id="p-q2" placeholder="Escríbele a JARVIS…" autocomplete="off" /><button type="button" id="p-parar" title="Parar" hidden>■</button><button id="p-enviar">➤</button></form>
+    </div>
+    <div class="p-cuerpo" id="p-chat" hidden>
+      <div class="rapidos">
+        <button id="p-resumir">Resumir</button>
+        <button data-q="Dame los puntos clave de esta página en una lista corta.">Puntos clave</button>
+        <button id="p-traducir">Traducir página</button>
+        <button id="p-voz">Leer en voz alta</button>
+        <button id="p-ves">¿Qué ves?</button>
+        <button id="p-foto">Foto de la página</button>
+        <button id="p-vigilar">Vigilar precio</button>
+        <button id="p-vigilar2">Vigilar cambios</button>
+        <button id="p-telefono">Enviar al teléfono</button>
+        <button id="p-subtitulos">Subtítulos traducidos</button>
+      </div>
+      <div id="charla"><div class="msg j">Hola, señor. Pregúnteme lo que quiera sobre la página que está viendo. También puede decirme por voz: «Jarvis, resume esta página».</div></div>
+      <form id="p-form"><input id="p-q" placeholder="Pregúntale a JARVIS sobre esta página…" autocomplete="off" /><button>➤</button></form>
+    </div>
+    <div class="p-cuerpo" id="p-favs" hidden></div>
+    <div class="p-cuerpo" id="p-escaner" hidden>
+      <div id="esc-tarjeta"><div class="esc-anillo"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6z" /></svg></div>
+        <div><b id="esc-nivel">—</b><small id="esc-host"></small></div></div>
+      <div class="esc-datos"><div><b id="esc-rastreadores">0</b><small>Rastreadores</small></div><div><b id="esc-anuncios">0</b><small>Anuncios</small></div><div><b id="esc-terceros">0</b><small>Terceros</small></div><div><b id="esc-https">—</b><small>Conexión</small></div></div>
+      <div id="esc-pistas"></div>
+      <div class="esc-mapa"><canvas id="mapa"></canvas><small id="mapa-txt">Mapa de conexiones</small></div>
+      <div id="esc-hosts"></div>
+    </div>
+    <div class="p-cuerpo" id="p-desc" hidden><div id="descargas"><div class="vacio">Sin descargas todavía.</div></div><button id="abrir-desc" class="sec">Abrir carpeta Descargas</button></div>
+  </aside>
+
+  <!-- barra de estado HUD -->
+  <footer id="estado">
+    <span class="punto" id="e-punto"></span><span id="e-host">EN LÍNEA</span>
+    <span class="sep"></span><span id="e-pest">1 PESTAÑA</span>
+    <button id="leyendo" hidden title="Parar la lectura">◼ LEYENDO <em id="leyendo-desde"></em> · PARAR</button>
+    <span id="mando">◆ JARVIS AL MANDO <em id="mando-acc"></em></span>
+    <span id="traduciendo" hidden></span>
+    <span id="gaming" hidden></span>
+    <span id="local-chip" hidden></span>
+    <span id="dictado-chip" hidden></span>
+    <button id="act-chip" hidden title="Se instala sola al cerrar el navegador. Clic: actualizar ahora (se reinicia).">⬆ <b id="act-ver"></b> · ACTUALIZAR</button>
+    <span id="gestos-chip" hidden title="Control con gestos"><canvas id="gesto-cam" width="64" height="48"></canvas><b id="gestos-txt">✋</b></span>
+    <span id="oido" hidden></span>
+    <span id="monitor" hidden><span class="m" id="m-cpu"><em>CPU</em><canvas width="44" height="14"></canvas><b>0%</b></span><span class="m" id="m-ram"><em>RAM</em><canvas width="44" height="14"></canvas><b>0%</b></span><span class="m" id="m-gpu" hidden><em>GPU</em><canvas width="44" height="14"></canvas><b>0%</b><i></i></span><span class="m red" id="m-red"><em>NET</em><canvas width="44" height="14"></canvas><b>↓0 ↑0</b></span></span>
+    <span class="eq"><i></i><i></i><i></i><i></i><i></i></span>
+    <span id="e-zoom">100%</span><span class="sep"></span><span id="e-hora">--:--</span>
+  </footer>
+
+  <!-- terminal de comandos (Ctrl+K) [04-nov] -->
+  <div id="terminal" hidden>
+    <div class="term-caja">
+      <div class="term-barra"><i></i><i></i><i></i><span>jarvis@browser — terminal</span><em>Ctrl+K · Esc</em><button id="term-x" title="Cerrar">✕</button></div>
+      <div id="term-salida"></div>
+      <label class="term-linea"><b>jarvis@browser:~$</b><input id="term-in" autocomplete="off" spellcheck="false" /></label>
+    </div>
+  </div>
+
+  <script src="mapa.js"></script>
+  <script src="app.js"></script>
+  <script src="gestos.js"></script>
+  <script src="dictado.js"></script>
+</body>
+</html>

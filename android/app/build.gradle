@@ -1,0 +1,43 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'os.jarvis.navegador'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'os.jarvis.navegador'
+        minSdk 30
+        targetSdk 36
+        versionCode 5
+        versionName '1.0.4'
+    }
+    // 🔒 [seguridad 05-nov] versión «release»: firmada con la llave propia del usuario y SIN modo depuración
+    // (la llave y su clave viven fuera del proyecto, en ~/.config/jarvis/android/, nunca en git)
+    def firma = new Properties()
+    def archivoFirma = new File(System.getProperty('user.home'), '.config/jarvis/android/firma.properties')
+    if (archivoFirma.exists()) archivoFirma.withInputStream { firma.load(it) }
+    // sin la firma de siempre, Android obliga a desinstalar (y se borran las llaves): mejor no construir
+    if (!archivoFirma.exists() && gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) throw new GradleException('Falta la firma de JARVIS (~/.config/jarvis/android/firma.properties). Restaurala desde JARVIS_BACKUPS/firma_android antes de construir.')
+    signingConfigs {
+        release {
+            if (archivoFirma.exists()) {
+                storeFile new File(firma['archivo'])
+                storePassword firma['clave']
+                keyAlias firma['alias']
+                keyPassword firma['clave']
+            }
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; debuggable false; signingConfig signingConfigs.release }
+    }
+    lint { checkReleaseBuilds false; abortOnError false }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    androidResources { ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~' }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+}

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; script-src 'self'" />
+  <title>Configuración — Navegador JARVIS</title>
+  <link rel="stylesheet" href="config.css" />
+</head>
+<body>
+  <header id="cab">
+    <div class="marca"><span class="anillo"></span><b>CONFIGURACIÓN</b><small>NAVEGADOR JARVIS</small></div>
+    <input id="buscar" placeholder="Buscar ajuste…" />
+    <button id="cerrar" title="Cerrar">×</button>
+  </header>
+  <div id="cuerpo">
+    <nav id="menu">
+      <button data-s="general" class="activo">⚙ General</button>
+      <button data-s="seguridad">🛡 Seguridad y privacidad</button>
+      <button data-s="permisos">🔑 Permisos de sitios</button>
+      <button data-s="historial">🕘 Historial</button>
+      <button data-s="datos">🧹 Borrar datos</button>
+      <button data-s="descargas">⬇ Descargas</button>
+      <button data-s="ia">🧠 Cerebro de JARVIS</button>
+      <button data-s="jarvis">◉ JARVIS</button>
+      <button data-s="extensiones">🧩 Extensiones</button>
+      <button data-s="vigilante">🔔 Vigilante</button>
+      <button data-s="telefono">📱 Teléfono</button>
+      <button data-s="cyber">🛰 Cyber HUD</button>
+      <button data-s="acerca">ℹ Acerca de</button>
+    </nav>
+    <main>
+      <section id="general" class="sec">
+        <h2>General</h2>
+        <div class="tarjeta">
+          <div class="fila"><span>Tema de colores<small>Todo el navegador, la página de inicio y el centro de mando</small></span>
+            <span class="temas" id="temas"><button data-tema="cian" title="Cian"><i></i>Cian</button><button data-tema="rojo" title="Rojo"><i></i>Rojo</button><button data-tema="verde" title="Verde Matrix"><i></i>Matrix</button><button data-tema="morado" title="Morado"><i></i>Morado</button><button data-tema="dorado" title="Dorado"><i></i>Dorado</button></span></div>
+          <div class="fila"><span>Al abrir el navegador</span>
+            <select id="inicio"><option value="restaurar">Seguir donde lo dejé</option><option value="jarvis">Página de inicio de JARVIS</option><option value="pagina">Una página que elijo</option></select></div>
+          <div class="fila" id="fila-pagina"><span>Página de inicio</span><input id="paginaInicio" placeholder="https://…" /></div>
+          <div class="fila"><span>Buscador<small>Lo que escribes en la barra que no es una dirección</small></span><select id="buscador"></select></div>
+          <div class="fila"><span>Tamaño de las páginas (zoom)</span>
+            <select id="zoom"><option value="80">80 %</option><option value="90">90 %</option><option value="100">100 %</option><option value="110">110 %</option><option value="125">125 %</option><option value="150">150 %</option></select></div>
+          <div class="fila"><span>Idioma<small>Menús, respuestas y voz de JARVIS · se aplica al reiniciar el navegador</small></span>
+            <select id="idioma"><option value="">English (predeterminado)</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option></select></div>
+          <div class="fila"><span>Subtítulos traducidos en YouTube<small>Si el video está en otro idioma, JARVIS pone los subtítulos traducidos solo</small></span><label class="sw"><input type="checkbox" id="subtitulosAuto" /><i></i></label></div>
+          <div class="fila"><span>Idioma de los subtítulos</span><select id="idiomaSubtitulos"><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option></select></div>
+          <div class="fila"><span>Pestañas verticales<small>Las pestañas en una columna a la izquierda, como en Edge</small></span><label class="sw"><input type="checkbox" id="pestanasVerticales" /><i></i></label></div>
+          <div class="fila"><span>Modo gaming automático<small>Al abrir un juego, las pestañas de fondo se duermen y el navegador cede la CPU y la RAM al juego</small></span><label class="sw"><input type="checkbox" id="modoGaming" /><i></i></label></div>
+          <div class="fila"><span>Abrir el panel de JARVIS al arrancar</span><label class="sw"><input type="checkbox" id="panelAlAbrir" /><i></i></label></div>
+        </div>
+        <h3>Traer tus cosas y ser tu navegador</h3>
+        <div class="tarjeta">
+          <div class="fila llave-fila"><span>Importar de otro navegador<small>Trae tus favoritos y tu historial de Chrome, Edge o Brave. Las contraseñas no: Chrome las tiene bloqueadas a sí mismo, y este navegador no guarda contraseñas (siguen en passwords.google.com).</small><small class="estado-llave" id="imp-estado"></small></span>
+            <span class="llave"><select id="imp-perfil"></select><label class="mini"><input type="checkbox" id="imp-fav" checked /> Favoritos</label><label class="mini"><input type="checkbox" id="imp-hist" checked /> Historial</label><button class="sec-btn" id="imp-ya">Importar</button></span></div>
+          <div class="fila"><span>Navegador predeterminado<small>Que los enlaces que abres desde otros programas (WhatsApp, correos, Discord…) se abran aquí. Windows te pide que lo confirmes tú.</small><small class="estado-llave" id="pred-estado"></small></span><button class="sec-btn" id="pred-ya">Hacerlo predeterminado</button></div>
+        </div>
+      </section>
+
+      <section id="seguridad" class="sec" hidden>
+        <h2>Seguridad y privacidad</h2>
+        <div class="escudo"><div class="esc-ico">🛡</div><div><b id="esc-titulo">Protección activa</b><small id="esc-sub"></small></div></div>
+        <div class="tarjeta">
+          <div class="fila"><span>Bloquear anuncios y rastreadores<small>Las páginas cargan más rápido y no te siguen de un sitio a otro</small></span><label class="sw"><input type="checkbox" id="bloquearRastreadores" /><i></i></label></div>
+          <div class="fila"><span>Bloqueador de anuncios completo<small>Listas EasyList y uBlock: quita la mayoría de anuncios y los huecos que dejan</small></span><label class="sw"><input type="checkbox" id="bloquearAnuncios" /><i></i></label></div>
+          <div class="fila"><span>Escáner de descargas<small>Cada archivo que bajas pasa por Windows Defender. Si es peligroso, te aviso en rojo y en voz alta.</small></span><label class="sw"><input type="checkbox" id="escanerDescargas" /><i></i></label></div>
+          <div class="fila llave-fila"><span>VirusTotal (opcional, gratis)<small>Además revisa el archivo con más de 70 antivirus. Solo se envía su huella, nunca el archivo.</small><small class="estado-llave" id="vt-estado"></small></span>
+            <span class="llave"><input type="password" id="in-vt" placeholder="Pega la llave aquí" autocomplete="off" spellcheck="false" /><button class="sec-btn" id="vt-guardar">Guardar</button><button class="sec-btn enlace" data-enlace="https://www.virustotal.com/gui/my-apikey">Conseguir llave</button><button class="sec-btn" id="vt-quitar" hidden>Quitar</button></span></div>
+          <div class="fila"><span>Usar siempre conexión segura (HTTPS)<small>Si una página no la tiene, te aviso antes de abrirla</small></span><label class="sw"><input type="checkbox" id="soloHttps" /><i></i></label></div>
+          <div class="fila"><span>DNS seguro contra virus y estafas<small>Quad9 frena páginas peligrosas conocidas · se aplica al reiniciar el navegador</small></span><label class="sw"><input type="checkbox" id="dnsSeguro" /><i></i></label></div>
+          <div class="fila"><span>Pedir a las páginas que no me rastreen<small>Envía las señales «Do Not Track» y «Global Privacy Control»</small></span><label class="sw"><input type="checkbox" id="noRastrear" /><i></i></label></div>
+          <div class="fila"><span>Bloquear ventanas emergentes<small>Puedes permitirlas en un sitio concreto cuando te avise</small></span><label class="sw"><input type="checkbox" id="bloquearEmergentes" /><i></i></label></div>
+          <div class="fila"><span>Preguntarme antes de usar cámara, micrófono o ubicación<small>Y recordar lo que digas en cada sitio</small></span><label class="sw"><input type="checkbox" id="preguntarPermisos" /><i></i></label></div>
+          <div class="fila"><span>Guardar historial</span><label class="sw"><input type="checkbox" id="guardarHistorial" /><i></i></label></div>
+          <div class="fila"><span>Borrar todo al cerrar el navegador<small>Historial, cookies y sesiones: tendrás que volver a entrar a tus cuentas</small></span><label class="sw"><input type="checkbox" id="borrarAlCerrar" /><i></i></label></div>
+        </div>
+        <p class="nota">🕶 <b>Pestaña privada</b> (Ctrl+Mayús+N o «Jarvis, abre una pestaña privada»): no guarda historial, cookies ni contraseñas; todo se borra al cerrarla.<br />🔒 El navegador nunca guarda contraseñas ni tarjetas, y cada página corre aislada de tu PC.</p>
+      </section>
+
+      <section id="permisos" class="sec" hidden>
+        <h2>Permisos de sitios</h2>
+        <p class="nota">Lo que permitiste o bloqueaste en cada página. Quítalo y te volverá a preguntar.</p>
+        <div class="tarjeta" id="lista-permisos"></div>
+        <h3>Ventanas emergentes permitidas</h3>
+        <div class="tarjeta" id="lista-emergentes"></div>
+      </section>
+
+      <section id="historial" class="sec" hidden>
+        <h2>Historial</h2>
+        <div class="barra-h"><input id="h-buscar" placeholder="Buscar en el historial…" /><button id="h-borrar" class="peligro">Borrar todo el historial</button></div>
+        <div class="tarjeta" id="lista-historial"></div>
+      </section>
+
+      <section id="datos" class="sec" hidden>
+        <h2>Borrar datos de navegación</h2>
+        <div class="tarjeta">
+          <div class="fila"><span>Periodo</span><select id="d-periodo"><option value="3600000">Última hora</option><option value="86400000">Últimas 24 horas</option><option value="604800000">Última semana</option><option value="0" selected>Todo</option></select></div>
+          <div class="fila"><span>Historial</span><label class="sw"><input type="checkbox" id="d-historial" checked /><i></i></label></div>
+          <div class="fila"><span>Cookies y sesiones<small>Saldrás de tus cuentas</small></span><label class="sw"><input type="checkbox" id="d-cookies" /><i></i></label></div>
+          <div class="fila"><span>Imágenes y archivos guardados (caché)</span><label class="sw"><input type="checkbox" id="d-cache" checked /><i></i></label></div>
+          <div class="fila"><span>Permisos de sitios</span><label class="sw"><input type="checkbox" id="d-permisos" /><i></i></label></div>
+        </div>
+        <button id="d-borrar" class="peligro grande">Borrar ahora</button>
+      </section>
+
+      <section id="descargas" class="sec" hidden>
+        <h2>Descargas</h2>
+        <div class="tarjeta">
+          <div class="fila"><span>Guardar en<small id="carpeta-actual"></small></span><button id="elegir-carpeta" class="sec-btn">Cambiar…</button></div>
+          <div class="fila"><span>Preguntarme dónde guardar cada archivo</span><label class="sw"><input type="checkbox" id="preguntarDonde" /><i></i></label></div>
+          <div class="fila"><span>Avisarme cuando baje un programa<small>Instálalo solo si confías en la página</small></span><label class="sw"><input type="checkbox" id="avisarProgramas" /><i></i></label></div>
+        </div>
+      </section>
+
+      <section id="jarvis" class="sec" hidden>
+        <h2>JARVIS</h2>
+        <div class="tarjeta">
+          <div class="fila"><span>Permitir que JARVIS maneje el navegador<small>Abrir páginas, hacer clic, escribir, leer y tomar fotos cuando se lo pides por voz</small></span><label class="sw"><input type="checkbox" id="controlJarvis" /><i></i></label></div>
+        </div>
+        <p class="nota">JARVIS solo entra a la página que tienes abierta, nunca a tus contraseñas, y solo cuando tú se lo pides. Cada vez que actúa ves «JARVIS AL MANDO» abajo.</p>
+      </section>
+
+      <section id="ia" class="sec" hidden>
+        <h2>Cerebro de JARVIS</h2>
+        <p class="nota">El navegador piensa por su cuenta con la IA que elijas: no necesita el otro JARVIS encendido. Pon al menos una llave. La de Gemini es gratis.</p>
+        <div class="tarjeta">
+          <div class="fila llave-fila"><span>Gemini (Google)<small>Gratis · ve fotos y videos de YouTube y entiende el micrófono</small><small class="estado-llave" id="ll-gemini"></small></span>
+            <span class="llave"><input type="password" id="in-gemini" placeholder="Pega la llave aquí" autocomplete="off" spellcheck="false" /><button class="sec-btn" data-guardar="gemini">Guardar</button><button class="sec-btn enlace" data-enlace="https://aistudio.google.com/apikey">Conseguir llave</button><button class="sec-btn" data-probar="gemini">Probar</button><button class="sec-btn" data-quitar="gemini">Quitar</button></span></div>
+          <div class="fila llave-fila"><span>Claude (Anthropic)<small>De pago (API) · muy bueno pensando; no entiende audio</small><small class="estado-llave" id="ll-claude"></small></span>
+            <span class="llave"><input type="password" id="in-claude" placeholder="Pega la llave aquí" autocomplete="off" spellcheck="false" /><button class="sec-btn" data-guardar="claude">Guardar</button><button class="sec-btn enlace" data-enlace="https://console.anthropic.com/settings/keys">Conseguir llave</button><button class="sec-btn" data-probar="claude">Probar</button><button class="sec-btn" data-quitar="claude">Quitar</button></span></div>
+          <div class="fila llave-fila"><span>OpenAI (ChatGPT)<small>De pago (API) · ve fotos y entiende el micrófono</small><small class="estado-llave" id="ll-openai"></small></span>
+            <span class="llave"><input type="password" id="in-openai" placeholder="Pega la llave aquí" autocomplete="off" spellcheck="false" /><button class="sec-btn" data-guardar="openai">Guardar</button><button class="sec-btn enlace" data-enlace="https://platform.openai.com/api-keys">Conseguir llave</button><button class="sec-btn" data-probar="openai">Probar</button><button class="sec-btn" data-quitar="openai">Quitar</button></span></div>
+          <div class="fila"><span>Usar primero<small>Si esa falla, pruebo las otras</small></span><select id="primeraIA"><option value="gemini">Gemini</option><option value="claude">Claude</option><option value="openai">OpenAI</option></select></div>
+        </div>
+        <h3>🎙 Dictado y 📄 documentos</h3>
+        <div class="tarjeta">
+          <div class="fila"><span>Dictado por voz (Ctrl+Mayús+D)<small>En cualquier caja de cualquier página: pulsa Ctrl+Mayús+D (o clic derecho › «Dictar aquí»), habla, y JARVIS lo escribe donde está el cursor. Se para solo cuando te callas. Necesita la llave de Gemini u OpenAI.</small></span><label class="sw"><input type="checkbox" id="dictado" /><i></i></label></div>
+          <div class="fila"><span>Escribir lo que dicto en<small>Puedes hablar en español y que se escriba en inglés (o al revés)</small></span>
+            <select id="dictadoIdioma"><option value="">El mismo idioma en que hablo</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option></select></div>
+          <div class="fila"><span>Hablar con PDFs y documentos<small>Abre PDFs en el navegador y pregúntale a JARVIS: resumir, puntos clave, cuestionario… «📄 Abrir documento» (Ctrl+O) abre un PDF, Word o texto de tu PC.</small></span><label class="sw"><input type="checkbox" id="documentos" /><i></i></label></div>
+        </div>
+        <h3>💾 Memoria de JARVIS</h3>
+        <p class="nota">JARVIS recuerda lo que le cuentas aunque cierres el navegador: dile «recuerda que…» o «olvida lo de…». Se guarda solo en esta PC. Nunca guarda contraseñas, tarjetas ni llaves, y en las pestañas privadas no recuerda nada.</p>
+        <div class="tarjeta">
+          <div class="fila"><span>Memoria de JARVIS<small>Usa lo que recuerda al ayudarte (gustos, proyectos, cómo te gusta que te hable)</small></span><label class="sw"><input type="checkbox" id="memoriaJarvis" /><i></i></label></div>
+          <div class="fila llave-fila"><span>Enseñarle algo<small id="mem-n"></small></span><span class="llave"><input id="mem-nueva" placeholder="Ej.: Me gusta que me contestes en español" autocomplete="off" /><button class="sec-btn" id="mem-poner">Recordar</button><button class="sec-btn" id="mem-borrar">Borrar todo</button></span></div>
+          <div id="mem-lista"></div>
+        </div>
+        <h3>🧠 Cerebro local (Qwen en tu PC)</h3>
+        <p class="nota">JARVIS también puede pensar con el Qwen que tienes en tu PC: sin internet, sin cupos y sin pagar. No ve fotos (solo lee el texto de la página) y es más lento que Gemini.</p>
+        <div class="tarjeta">
+          <div class="fila"><span>Usar el cerebro local<small>Si las IAs de internet fallan o se agotan, contesta Qwen</small><small class="estado-llave" id="local-estado"></small></span><label class="sw"><input type="checkbox" id="cerebroLocal" /><i></i></label></div>
+          <div class="fila"><span>Usarlo primero<small>Qwen contesta siempre y las de internet quedan de reserva</small></span><label class="sw"><input type="checkbox" id="localPrimero" /><i></i></label></div>
+          <div class="fila"><span>Encender Qwen solo cuando haga falta<small>Si está apagado, el navegador lo abre escondido (tarda 20-60 s). Nunca mientras juegas, y se apaga al empezar un juego.</small></span><label class="sw"><input type="checkbox" id="localArrancar" /><i></i></label></div>
+          <div class="fila"><span>Cómo se enciende<small id="local-bat"></small></span><button id="local-elegir" class="sec-btn">Cambiar…</button></div>
+          <div class="fila"><span>Probar ahora</span><span class="llave"><button id="local-encender" class="sec-btn">Encender Qwen</button><button id="local-probar" class="sec-btn">Probar</button></span></div>
+        </div>
+        <div class="tarjeta">
+          <div class="fila"><span>Conectar con el JARVIS de fondo<small>Si está encendido, el chat lo usa a él (además maneja tu PC). Apagado, el navegador es 100 % aparte.</small></span><label class="sw"><input type="checkbox" id="conectarJarvis" /><i></i></label></div>
+          <div class="fila"><span>Contestar en voz alta<small>JARVIS dice lo que escribe en el chat</small></span><label class="sw"><input type="checkbox" id="vozRespuestas" /><i></i></label></div>
+          <div class="fila"><span>Voz siempre activa: «Jarvis…»<small>Di «Jarvis» y tu orden, sin tocar el micrófono. La palabra «Jarvis» se reconoce dentro de tu PC, sin internet; solo lo que dices después va a la IA. La primera vez baja el modelo de voz (39 MB).</small><small class="estado-llave" id="oido-estado"></small></span><label class="sw"><input type="checkbox" id="vozSiempre" /><i></i></label></div>
+          <div class="fila"><span>Voz de JARVIS<small>La de Windows es gratis y no necesita internet; las de IA suenan más naturales</small></span>
+            <select id="vozMotor"><option value="auto">Automática (OpenAI si hay llave, si no Windows)</option><option value="sistema">Voz de Windows</option><option value="openai">OpenAI (natural)</option><option value="gemini">Gemini (natural, cupo gratis pequeño)</option></select></div>
+        </div>
+        <p class="nota">🔒 Las llaves se guardan cifradas por Windows en esta PC y nunca se vuelven a mostrar. Lo que le pides a JARVIS (y el texto o la foto de la página, cuando se lo pides) va a la IA que elegiste. En las pestañas privadas no mira nada.</p>
+      </section>
+
+      <section id="vigilante" class="sec" hidden>
+        <h2>Vigilante</h2>
+        <p class="nota">Las páginas que JARVIS vigila por ti. Mientras el navegador está abierto, las revisa cada hora y te avisa con una notificación y en voz alta si baja el precio o hay algo nuevo. Mientras juegas no revisa nada. Para añadir una: abre la página y pulsa «Vigilar precio» o «Vigilar cambios» en el panel de JARVIS, o díselo en el chat.</p>
+        <div class="tarjeta" id="lista-vig"></div>
+      </section>
+
+      <section id="telefono" class="sec" hidden>
+        <h2>Teléfono</h2>
+        <p class="nota">Manda a tu teléfono, por Telegram, la página que estás viendo, una foto de ella, un texto o una imagen (clic derecho › «Enviar al teléfono», o dile a JARVIS «mándalo a mi teléfono»). Se hace con un bot tuyo; tarda 2 minutos:</p>
+        <div class="tarjeta">
+          <div class="fila llave-fila"><span>1 · Crea tu bot<small>En Telegram abre @BotFather, escribe /newbot, ponle un nombre y copia la llave que te da (algo como 123456:ABC-DEF…).</small></span>
+            <span class="llave"><button class="sec-btn" id="tg-botfather">Abrir @BotFather</button></span></div>
+          <div class="fila llave-fila"><span>2 · Pega la llave del bot<small class="estado-llave" id="tg-estado-bot">Sin bot</small></span>
+            <span class="llave"><input type="password" id="tg-llave" placeholder="Pega la llave del bot aquí" autocomplete="off" spellcheck="false" /><button class="sec-btn" id="tg-guardar">Guardar</button><button class="sec-btn" id="tg-quitar" hidden>Quitar</button></span></div>
+          <div class="fila llave-fila"><span>3 · Conecta tu teléfono<small>Abre tu bot en Telegram, escríbele cualquier cosa (por ejemplo «hola») y pulsa «Conectar».</small><small class="estado-llave" id="tg-estado-chat"></small></span>
+            <span class="llave"><button class="sec-btn" id="tg-abrir-bot" hidden>Abrir mi bot</button><button class="sec-btn" id="tg-conectar">Conectar</button></span></div>
+        </div>
+        <p class="nota">🔒 La llave del bot se guarda cifrada por Windows en esta PC y nunca se vuelve a mostrar. Solo se envía lo que tú pidas.</p>
+      </section>
+
+      <section id="cyber" class="sec" hidden>
+        <h2>Cyber HUD</h2>
+        <div class="tarjeta">
+          <div class="fila"><span>Escáner de amenazas<small>Cada página pasa un escaneo: rastreadores y anuncios bloqueados, servidores de terceros y nivel de riesgo. Si parece una estafa, te avisa en rojo.</small></span><label class="sw"><input type="checkbox" id="escaner" /><i></i></label></div>
+          <div class="fila"><span>Efectos holográficos<small>Barrido de escaneo al cargar, holograma al cambiar de pestaña y el orbe de JARVIS que late con la voz</small></span><label class="sw"><input type="checkbox" id="efectos" /><i></i></label></div>
+          <div class="fila"><span>Sonidos de interfaz<small>Pitidos muy bajitos al cambiar de pestaña, enviar, escanear y en las alertas</small></span><label class="sw"><input type="checkbox" id="sonidosUI" /><i></i></label></div>
+          <div class="fila"><span>Monitor del sistema<small>CPU, RAM, GPU (temperatura incluida) e internet en vivo en la barra de abajo. Se pausa mientras juegas.</small></span><label class="sw"><input type="checkbox" id="monitorSistema" /><i></i></label></div>
+        </div>
+        <h3>Terminal y centro de mando</h3>
+        <div class="tarjeta">
+          <div class="fila"><span>Terminal de comandos (Ctrl+K)<small>Una consola para darle órdenes al navegador escribiendo: open youtube, scan, trace google.com, sys, gaming on… Escribe «help» para verlas todas.</small></span><label class="sw"><input type="checkbox" id="terminal" /><i></i></label></div>
+          <div class="fila"><span>Centro de mando<small>Una pantalla fija en tu otro monitor con reloj, el orbe de JARVIS, CPU/GPU, la página actual con su mapa y las alertas. Se abre con el navegador.</small></span><label class="sw"><input type="checkbox" id="centroMando" /><i></i></label></div>
+          <div class="fila"><span>Monitor del centro de mando</span><select id="pantallaMando"></select></div>
+        </div>
+        <h3>✋ Control con gestos</h3>
+        <p class="nota">La cámara ve tu mano y JARVIS obedece. Todo se procesa dentro de tu PC: ninguna imagen sale de aquí. La primera vez baja el detector de manos (7,5 MB). Mientras juegas, la cámara se apaga.<br />
+          👉 / 👈 Mueve la mano de lado: pestaña siguiente / anterior · ✋ Palma abierta quieta 1 s: pausa o sigue el video · ☝ Un dedo arriba: sube la página · ✌ Dos dedos: baja la página · 👍 Pulgar arriba 1 s: llama a JARVIS · ✊ Puño cerrado 1,5 s: cierra la pestaña · 🤏 Pellizco (pulgar con índice) y sube o baja la mano: zoom</p>
+        <div class="tarjeta">
+          <div class="fila"><span>Control con gestos</span><label class="sw"><input type="checkbox" id="gestos" /><i></i></label></div>
+          <div class="fila"><span>Cámara<small>Puedes usar la de tu celular: conéctalo como cámara (abajo te explico cómo) y elígelo aquí</small></span><span class="llave"><select id="camaraGestos"></select><button id="cam-buscar" class="sec-btn">Buscar cámaras</button></span></div>
+          <div class="fila"><span>Ver la mini cámara<small>Tu mano dibujada en la barra de abajo, para saber que te ve</small></span><label class="sw"><input type="checkbox" id="gestosVista" /><i></i></label></div>
+        </div>
+        <p class="nota">📱 <b>Usar la cámara del celular:</b> en Windows 11 con Android, abre Configuración de Windows › Bluetooth y dispositivos › Dispositivos móviles › Administrar dispositivos, y en tu teléfono activa «Usar como cámara conectada». Con iPhone o Android también sirven apps gratis como Iriun Webcam o DroidCam (se instalan en el celular y en la PC). Después pulsa «Buscar cámaras» y elige el celular.</p>
+        <h3>«Jarvis, clip that»</h3>
+        <p class="nota">Mientras juegas, di «Jarvis, clip that» (con la voz siempre activa) o escríbelo en el chat: JARVIS guarda la jugada y te la manda al teléfono. Necesita la repetición instantánea de NVIDIA (Alt+Z › Repetición instantánea › Activar) o «Grabar lo que pasó» de la Xbox Game Bar.</p>
+        <div class="tarjeta">
+          <div class="fila"><span>Grabar con</span><select id="clipMetodo"><option value="nvidia">NVIDIA (Alt+F10)</option><option value="xbox">Xbox Game Bar (Win+Alt+G)</option></select></div>
+          <div class="fila"><span>Mandar el clip al teléfono<small>Por Telegram, si pesa menos de 50 MB</small></span><label class="sw"><input type="checkbox" id="clipTelefono" /><i></i></label></div>
+          <div class="fila"><span>Carpeta donde se guardan los clips<small id="carpeta-clips"></small></span><button id="elegir-clips" class="sec-btn">Cambiar…</button></div>
+          <div class="fila"><span>Probar ahora<small>Guarda los últimos segundos de lo que haya en pantalla</small></span><button id="probar-clip" class="sec-btn">Clip</button></div>
+        </div>
+      </section>
+
+      <section id="extensiones" class="sec" hidden>
+        <h2>Extensiones</h2>
+        <p class="nota">Añade funciones nuevas al navegador: extensiones de Chrome (carpeta descomprimida) o extensiones JARVIS (un script sencillo). Copia cada una en su propia carpeta dentro de la carpeta de extensiones y pulsa «Recargar».</p>
+        <div class="barra-h"><button id="ext-carpeta" class="sec-btn">Abrir carpeta de extensiones</button><button id="ext-recargar" class="sec-btn">Recargar extensiones</button></div>
+        <div class="tarjeta" id="lista-ext"></div>
+        <p class="nota" id="ext-ruta"></p>
+      </section>
+
+      <section id="acerca" class="sec" hidden>
+        <h2>Acerca de</h2>
+        <div class="tarjeta"><div class="fila"><span>Navegador JARVIS<small id="version"></small><small class="estado-llave" id="act-estado"></small></span><span class="llave"><button class="sec-btn" id="act-buscar">Buscar actualización</button><button class="sec-btn" id="act-ya" hidden>Actualizar ahora</button></span></div>
+          <div class="fila"><span>Actualizaciones automáticas<small>Cuando hay una versión nueva, se instala sola al cerrar el navegador</small></span><label class="sw"><input type="checkbox" id="actualizarAuto" /><i></i></label></div>
+          <div class="fila"><span>Motor<small id="motor"></small></span></div>
+          <div class="fila"><span>Anuncios y rastreadores bloqueados en esta sesión<small id="bloq"></small></span></div></div>
+        <button id="restablecer" class="sec-btn">Restablecer la configuración original</button>
+      </section>
+    </main>
+  </div>
+  <div id="toast" hidden></div>
+  <div class="modal" id="confirmar" hidden><div><p id="confirmar-texto"></p><div class="botones"><button class="sec-btn" id="c-no">Cancelar</button><button id="c-si" class="peligro">Sí, hazlo</button></div></div></div>
+  <script src="config.js"></script>
+</body>
+</html>

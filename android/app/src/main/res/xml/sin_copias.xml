@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 🔒 nada de la app va a copias en la nube ni a otro teléfono (historial, memoria, llaves) -->
+<data-extraction-rules>
+  <cloud-backup><exclude domain="root" /><exclude domain="file" /><exclude domain="database" /><exclude domain="sharedpref" /></cloud-backup>
+  <device-transfer><exclude domain="root" /><exclude domain="file" /><exclude domain="database" /><exclude domain="sharedpref" /></device-transfer>
+</data-extraction-rules>

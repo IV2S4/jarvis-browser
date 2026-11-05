@@ -1,0 +1,61 @@
+/* Temas HUD [04-nov]: --c1 color principal, --c2 el claro (Configuración › General › Tema) */
+:root { --c1: 56, 214, 255; --c2: 127, 233, 255; }
+html[data-tema="rojo"] { --c1: 255, 64, 88; --c2: 255, 150, 160; }
+html[data-tema="verde"] { --c1: 0, 255, 120; --c2: 140, 255, 180; }
+html[data-tema="morado"] { --c1: 170, 110, 255; --c2: 210, 175, 255; }
+html[data-tema="dorado"] { --c1: 255, 190, 60; --c2: 255, 222, 140; }
+/* Centro de mando JARVIS [04-nov] — pensado para un monitor vertical (720×1280), se adapta a cualquiera */
+:root { --cian: rgb(var(--c1)); --cian2: rgb(var(--c2)); --verde: #3dffb5; --rojo: #ff5c7a; --ambar: #ffc94d; --borde: rgba(var(--c1), .22); --fondo: #02060b; }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; background: #02060b; }
+body { background: var(--fondo); color: #cfefff; font: 14px 'Segoe UI', system-ui, sans-serif; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 12px; user-select: none; }
+#fondo { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+#cerrar { position: fixed; top: 8px; right: 10px; z-index: 5; background: none; border: 1px solid transparent; color: rgba(var(--c1), .25); border-radius: 6px; width: 26px; height: 26px; cursor: pointer; }
+#cerrar:hover { color: var(--rojo); border-color: rgba(255, 92, 122, .5); }
+header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--borde); padding-bottom: 10px; }
+.marca { font: 700 22px 'Segoe UI', sans-serif; letter-spacing: 6px; color: var(--cian); text-shadow: 0 0 14px rgba(var(--c1), .6); }
+.marca small { display: block; font-size: 10px; letter-spacing: 5px; color: rgba(var(--c2), .6); margin-top: 2px; }
+.hora { text-align: right; }
+.hora b { display: block; font: 300 40px Consolas, 'Cascadia Mono', monospace; color: #fff; text-shadow: 0 0 18px rgba(var(--c1), .6); letter-spacing: 2px; line-height: 1; }
+.hora small { font-size: 11px; letter-spacing: 3px; color: rgba(var(--c2), .7); text-transform: uppercase; }
+.orbe { position: relative; height: 26vh; min-height: 170px; display: flex; align-items: center; justify-content: center; }
+#orbe { position: absolute; inset: 0; width: 100%; height: 100%; }
+.orbe-txt { position: absolute; bottom: 4px; text-align: center; }
+.orbe-txt b { font: 700 14px 'Segoe UI'; letter-spacing: 6px; color: var(--cian); }
+.orbe-txt small { display: block; font-size: 11px; color: rgba(207, 239, 255, .55); letter-spacing: 1px; margin-top: 2px; max-width: 80vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.habla .orbe-txt b { color: #fff; } body.gaming .orbe-txt b { color: var(--verde); } body.alerta .orbe-txt b { color: var(--rojo); }
+.tarjeta { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; background: linear-gradient(180deg, rgba(10, 30, 44, .55), rgba(4, 12, 20, .55)); position: relative; }
+.tarjeta::before { content: ''; position: absolute; left: 12px; top: -1px; width: 60px; height: 2px; background: var(--cian); box-shadow: 0 0 10px var(--cian); }
+h2 { font: 700 11px 'Segoe UI'; letter-spacing: 4px; color: rgba(var(--c2), .8); margin-bottom: 8px; display: flex; align-items: center; }
+.medidores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.med { position: relative; display: flex; flex-direction: column; align-items: center; }
+.med canvas { width: 100%; max-width: 110px; aspect-ratio: 1; }
+.med b { position: absolute; top: 37%; font: 600 17px Consolas, monospace; color: #fff; }
+.med small { font-size: 10px; letter-spacing: 3px; color: rgba(var(--c2), .7); }
+#grafica { width: 100%; height: 64px; display: block; margin-top: 6px; }
+.red { display: flex; gap: 16px; font: 12px Consolas, monospace; color: rgba(207, 239, 255, .7); margin-top: 4px; }
+.red b { color: #fff; font-weight: 400; }
+.riesgo { margin-left: auto; font-style: normal; font-size: 10px; letter-spacing: 2px; padding: 2px 8px; border-radius: 20px; border: 1px solid currentColor; }
+.riesgo.bajo { color: var(--verde); } .riesgo.medio { color: var(--ambar); } .riesgo.alto { color: var(--rojo); }
+.pagina { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; min-width: 0; }
+.pagina img { width: 24px; height: 24px; border-radius: 5px; flex: none; }
+.pagina div { min-width: 0; } .pagina b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; font-weight: 600; }
+.pagina small { color: rgba(var(--c2), .7); font: 12px Consolas, monospace; }
+.datos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; text-align: center; margin-bottom: 6px; }
+.datos b { display: block; font: 600 20px Consolas, monospace; color: var(--cian2); } .datos small { font-size: 9px; letter-spacing: 2px; color: rgba(207, 239, 255, .5); }
+#mapa { width: 100%; display: block; }
+.tenue { color: rgba(207, 239, 255, .45); font-size: 11px; }
+.registro { flex: 1; min-height: 120px; display: flex; flex-direction: column; }
+#log { flex: 1; overflow: hidden; font: 12px/1.55 Consolas, 'Cascadia Mono', monospace; display: flex; flex-direction: column; gap: 1px; }
+#log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(207, 239, 255, .8); animation: entra .35s ease-out; }
+#log i { font-style: normal; color: rgba(var(--c2), .45); margin-right: 8px; }
+#log .ok { color: var(--verde); } #log .mal { color: var(--rojo); } #log .aviso { color: var(--ambar); } #log .jarvis { color: var(--cian2); }
+@keyframes entra { from { opacity: 0; transform: translateX(-10px); } }
+footer { display: flex; justify-content: space-between; font: 11px Consolas, monospace; letter-spacing: 2px; color: rgba(var(--c2), .6); border-top: 1px solid var(--borde); padding-top: 8px; }
+/* pantalla horizontal: dos columnas */
+@media (min-aspect-ratio: 1/1) {
+  body { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr auto; }
+  header, footer { grid-column: 1 / -1; }
+  .orbe { grid-row: 2 / 4; height: auto; }
+  .registro { grid-column: 2; }
+}

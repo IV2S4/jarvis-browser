@@ -1,0 +1,5 @@
+// Navegador JARVIS para Android [04-nov]
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath 'com.android.tools.build:gradle:8.13.0' }
+}

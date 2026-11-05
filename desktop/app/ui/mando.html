@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; script-src 'self'" />
+  <title>JARVIS · Command Center</title>
+  <link rel="stylesheet" href="mando.css" />
+</head>
+<body>
+  <canvas id="fondo"></canvas>
+  <button id="cerrar" title="Close command center">✕</button>
+  <header>
+    <div class="marca">J.A.R.V.I.S<small>COMMAND CENTER</small></div>
+    <div class="hora"><b id="hora">--:--</b><small id="fecha"></small></div>
+  </header>
+
+  <section class="orbe">
+    <canvas id="orbe"></canvas>
+    <div class="orbe-txt"><b id="modo">STANDBY</b><small id="modo-sub">All systems nominal</small></div>
+  </section>
+
+  <section class="tarjeta">
+    <h2>SYSTEM</h2>
+    <div class="medidores">
+      <div class="med" id="g-cpu"><canvas width="120" height="120"></canvas><b>0%</b><small>CPU</small></div>
+      <div class="med" id="g-ram"><canvas width="120" height="120"></canvas><b>0%</b><small>RAM</small></div>
+      <div class="med" id="g-gpu"><canvas width="120" height="120"></canvas><b>—</b><small>GPU</small></div>
+      <div class="med" id="g-temp"><canvas width="120" height="120"></canvas><b>—</b><small>GPU °C</small></div>
+    </div>
+    <canvas id="grafica"></canvas>
+    <div class="red"><span>NET ↓ <b id="bajada">0</b></span><span>↑ <b id="subida">0</b></span><span>VRAM <b id="vram">—</b></span></div>
+  </section>
+
+  <section class="tarjeta">
+    <h2>ACTIVE PAGE <em id="riesgo" class="riesgo">—</em></h2>
+    <div class="pagina"><img id="p-ico" alt="" /><div><b id="p-titulo">—</b><small id="p-host"></small></div></div>
+    <div class="datos"><div><b id="d-rast">0</b><small>TRACKERS</small></div><div><b id="d-anun">0</b><small>ADS</small></div><div><b id="d-terc">0</b><small>3RD PARTY</small></div><div><b id="d-https">—</b><small>LINK</small></div></div>
+    <canvas id="mapa"></canvas>
+    <small id="mapa-txt" class="tenue">Connection map</small>
+  </section>
+
+  <section class="tarjeta registro">
+    <h2>EVENT LOG</h2>
+    <div id="log"></div>
+  </section>
+
+  <footer><span id="f-pest">0 TABS</span><span id="f-cerebro">BRAIN —</span><span id="f-escudo">🛡 SHIELD ON</span></footer>
+
+  <script src="mapa.js"></script>
+  <script src="mando.js"></script>
+</body>
+</html>

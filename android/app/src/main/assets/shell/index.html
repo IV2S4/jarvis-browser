@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' blob: data:; media-src 'self' blob: data:" />
+  <title>JARVIS Browser</title>
+  <link rel="stylesheet" href="shell.css" />
+</head>
+<body>
+  <!-- ── barra de arriba ── -->
+  <header id="arriba">
+    <div id="aviso-barra" hidden><span id="aviso-txt"></span><button id="aviso-salir">Get me out</button><button id="aviso-x">✕</button></div>
+    <div class="fila-dir">
+      <button id="escudo" class="chip-escudo" title="Scanner"><i>🛡</i><b id="escudo-n">0</b></button>
+      <form id="form-dir" autocomplete="off">
+        <span id="candado" class="candado">●</span>
+        <input id="dir" type="text" inputmode="url" enterkeyhint="go" spellcheck="false" autocapitalize="off" placeholder="Search or type a web address" />
+        <button type="button" id="dir-x" hidden>✕</button>
+        <button type="button" id="recargar" title="Reload">⟳</button>
+      </form>
+      <button id="orbe" title="JARVIS"><span class="anillo a1"></span><span class="anillo a2"></span><span class="nucleo"></span></button>
+    </div>
+    <div id="buscar-barra" hidden><input id="buscar-q" type="search" placeholder="Find in page" /><b id="buscar-n">0/0</b><button id="buscar-ant">▲</button><button id="buscar-sig">▼</button><button id="buscar-x">✕</button></div>
+    <div id="progreso"><i></i></div>
+  </header>
+
+  <!-- ── capas que tapan la página (se abren encima) ── -->
+  <div id="velo" hidden></div>
+  <section id="sugs" class="capa" hidden></section>
+
+  <section id="pestanas-capa" class="hoja grande" hidden>
+    <div class="hoja-cab"><b id="pest-n">TABS</b><span class="grow"></span><button id="pest-privada" class="sec">🕶 Private</button><button id="pest-nueva" class="pri">＋ New tab</button></div>
+    <div id="pest-lista"></div>
+    <div class="hoja-pie"><button id="pest-reabrir" class="sec">↺ Reopen closed tab</button><button id="pest-cerrar-todas" class="sec">Close all</button></div>
+  </section>
+
+  <section id="menu-capa" class="hoja" hidden>
+    <div id="menu-grid"></div>
+    <div class="menu-fila"><button id="m-zoom-menos">A−</button><span id="m-zoom">100%</span><button id="m-zoom-mas">A+</button><span class="grow"></span><label class="sw-mini"><input type="checkbox" id="m-escritorio" /> <span>Desktop site</span></label></div>
+  </section>
+
+  <section id="panel" class="hoja grande" hidden>
+    <div class="agarre"></div>
+    <div class="panel-cab">
+      <div class="emblema"><span class="anillo a1"></span><span class="anillo a2"></span><span class="nucleo"></span></div>
+      <div><b>JARVIS ASSISTANT</b><small id="panel-sub">Online</small></div>
+      <span class="grow"></span><button id="panel-x">✕</button>
+    </div>
+    <nav class="p-tabs"><button data-p="chat" class="activo">CHAT</button><button data-p="pagina">PAGE</button><button data-p="escaner">SCANNER</button><button data-p="desc">DOWNLOADS</button></nav>
+    <div class="p-cuerpo" id="p-chat">
+      <div id="sin-llave" hidden><span>To think on its own, JARVIS needs an AI key (Gemini's is free).</span> <button id="poner-llave" class="pri">Add key</button></div>
+      <div id="vista" hidden><img id="vista-img" alt="" /><small id="vista-txt"></small></div>
+      <div id="doc-barra" hidden></div>
+      <div id="charla"></div>
+      <div class="chips" id="chips-chat"></div>
+      <form id="form-chat"><button type="button" id="mic" title="Talk">🎙</button><input id="q" placeholder="Message JARVIS…" autocomplete="off" enterkeyhint="send" /><button type="button" id="parar" hidden>■</button><button id="enviar">➤</button></form>
+    </div>
+    <div class="p-cuerpo" id="p-pagina" hidden>
+      <div class="grid-acc" id="grid-pagina"></div>
+      <div id="pag-resp"></div>
+    </div>
+    <div class="p-cuerpo" id="p-escaner" hidden>
+      <div class="esc-tarjeta" id="esc-tarjeta"><b id="esc-nivel">RISK —</b><small id="esc-host"></small></div>
+      <div class="esc-datos"><div><b id="esc-r">0</b><small id="l-r">Trackers</small></div><div><b id="esc-a">0</b><small id="l-a">Ads</small></div><div><b id="esc-t">0</b><small id="l-t">3rd party</small></div><div><b id="esc-h">—</b><small id="l-h">Link</small></div></div>
+      <div id="esc-pistas"></div>
+      <canvas id="mapa"></canvas><small id="mapa-txt" class="tenue"></small>
+      <div id="esc-hosts"></div>
+    </div>
+    <div class="p-cuerpo" id="p-desc" hidden><div id="descargas"></div><button id="abrir-desc" class="sec ancho">Open Downloads folder</button></div>
+  </section>
+
+  <section id="menu-enlace" class="hoja" hidden><small id="me-url"></small><div id="me-acc"></div></section>
+
+  <section id="terminal" class="capa" hidden>
+    <div class="term-caja">
+      <div class="term-barra"><i></i><i></i><i></i><span>jarvis@android — terminal</span><button id="term-x">✕</button></div>
+      <div id="term-salida"></div>
+      <div class="term-atajos" id="term-atajos"></div>
+      <label class="term-linea"><b>jarvis:~$</b><input id="term-in" autocomplete="off" spellcheck="false" autocapitalize="off" enterkeyhint="go" /></label>
+    </div>
+  </section>
+
+  <section id="ajustes" class="capa pantalla" hidden></section>
+
+  <div id="toast" hidden></div>
+
+  <!-- ── barra de abajo ── -->
+  <footer id="abajo">
+    <div id="hud" class="hud">
+      <span class="punto"></span><span id="h-host">ONLINE</span>
+      <span id="h-chips"></span>
+      <span class="grow"></span>
+      <span id="h-mon"></span><span id="h-hora">--:--</span>
+    </div>
+    <nav class="nav">
+      <button id="b-atras" title="Back">❮</button>
+      <button id="b-adelante" title="Forward">❯</button>
+      <button id="b-inicio" title="Home">⌂</button>
+      <button id="b-pestanas" title="Tabs"><span id="b-pest-n">1</span></button>
+      <button id="b-menu" title="Menu">☰</button>
+    </nav>
+  </footer>
+
+  <script src="puente.js"></script>
+  <script src="pagina-js.js"></script>
+  <script src="cerebro-web.js"></script>
+  <script src="mapa.js"></script>
+  <script src="shell.js"></script>
+  <script src="jarvis.js"></script>
+  <script src="extras.js"></script>
+</body>
+</html>

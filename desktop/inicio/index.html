@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nueva pestaña · JARVIS Browser</title>
+<style>
+  :root { --cian:#38d6ff; --cian2:#9ae9ff; --fondo:#03070c; --texto:#d6f1ff; --tenue:#6f93a8; --borde:#16283a; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; }
+  body {
+    background: radial-gradient(ellipse at 50% 38%, #0b2131 0%, #050e17 45%, var(--fondo) 80%);
+    color:var(--texto); font-family: Rajdhani, Inter, system-ui, sans-serif; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;
+  }
+  #fx { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+  body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: linear-gradient(rgba(56,214,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(56,214,255,.05) 1px, transparent 1px);
+    background-size: 46px 46px; mask-image: radial-gradient(ellipse at 50% 45%, #000 20%, transparent 75%);
+    animation: rejilla 1.6s ease-out both; }
+  @keyframes rejilla { from { opacity:0; transform: scale(1.4); } to { opacity:1; transform:none; } }
+  /* línea de escaneo que barre la pantalla al abrir */
+  .barrido { position:fixed; left:0; right:0; height:120px; top:-140px; z-index:3; pointer-events:none;
+    background: linear-gradient(180deg, transparent, rgba(56,214,255,.10) 70%, rgba(154,233,255,.55) 98%, transparent);
+    animation: barre 1.5s cubic-bezier(.6,.1,.3,1) .15s both; }
+  @keyframes barre { from { top:-140px; } to { top:110vh; } }
+  .destello { position:fixed; inset:0; z-index:4; pointer-events:none; background: radial-gradient(circle at 50% 36%, rgba(154,233,255,.55), transparent 55%);
+    opacity:0; animation: destello .9s ease-out 1.15s both; }
+  @keyframes destello { 0% { opacity:0; } 15% { opacity:1; } 100% { opacity:0; } }
+
+  main { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; gap:22px; }
+  .anillo { position:relative; width:230px; height:230px; cursor:pointer; }
+  .anillo svg { position:absolute; inset:0; overflow:visible; }
+  .gira { animation: gira 24s linear infinite; transform-origin:50% 50%; }
+  .gira2 { animation: gira 9s linear infinite reverse; transform-origin:50% 50%; }
+  .gira3 { animation: gira 5s linear infinite; transform-origin:50% 50%; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .dibuja { stroke-dasharray: var(--l); stroke-dashoffset: var(--l); animation: dibuja 1.1s cubic-bezier(.7,0,.2,1) var(--d,0s) forwards; }
+  @keyframes dibuja { to { stroke-dashoffset: 0; } }
+  .nucleo { transform-origin:50% 50%; animation: late 3.2s ease-in-out infinite; }
+  @keyframes late { 0%,100% { opacity:.55; transform: scale(.96); } 50% { opacity:1; transform: scale(1.04); } }
+  .hora { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .hora b { font-family: Orbitron, Rajdhani, sans-serif; font-size:27px; font-weight:700; letter-spacing:2px; color:#fff;
+    text-shadow:0 0 18px rgba(56,214,255,.6); }
+  .hora span { font-size:13px; color:var(--tenue); letter-spacing:2px; text-transform:uppercase; }
+
+  .titulo { position:relative; font-family: Orbitron, Rajdhani, sans-serif; font-weight:700; font-size:clamp(26px, 4.4vw, 46px);
+    letter-spacing:.32em; padding-left:.32em; color:#eaf9ff; white-space:nowrap;
+    text-shadow: 0 0 12px rgba(56,214,255,.85), 0 0 40px rgba(56,214,255,.45); }
+  .titulo .b { color:var(--cian); }
+  .titulo { animation-name: entra, respira; animation-duration: .8s, 4s; animation-delay: var(--d), 3s; animation-iteration-count: 1, infinite; animation-fill-mode: forwards, none; animation-timing-function: cubic-bezier(.2,.8,.2,1), ease-in-out; }
+  @keyframes respira { 0%,100% { text-shadow: 0 0 12px rgba(56,214,255,.85), 0 0 40px rgba(56,214,255,.45); } 50% { text-shadow: 0 0 18px rgba(154,233,255,1), 0 0 70px rgba(56,214,255,.75); } }
+  .subt { font-size:12px; letter-spacing:6px; color:var(--tenue); text-transform:uppercase; margin-top:-12px; }
+  .subt i { font-style:normal; color:#28c840; }
+  .saludo { font-size:24px; color:#e8f7ff; margin-top:-4px; }
+
+  form { width:min(640px, 88vw); position:relative; }
+  input { width:100%; padding:16px 22px 16px 52px; border-radius:16px; font:500 19px Rajdhani, Inter, sans-serif;
+    color:#fff; background:rgba(10,20,30,.78); border:1px solid var(--borde); outline:none;
+    box-shadow: 0 10px 40px rgba(0,0,0,.45); transition: border-color .2s, box-shadow .2s; backdrop-filter: blur(6px); }
+  input:focus { border-color:var(--cian); box-shadow:0 0 0 3px rgba(56,214,255,.18), 0 0 30px rgba(56,214,255,.15), 0 10px 40px rgba(0,0,0,.45); }
+  input::placeholder { color:#5d7f93; }
+  form svg { position:absolute; left:18px; top:50%; transform:translateY(-50%); }
+  .accesos { display:grid; grid-template-columns: repeat(6, 92px); gap:14px; }
+  .accesos a { display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 6px; border-radius:14px;
+    text-decoration:none; color:var(--texto); font-size:14px; background:rgba(10,20,30,.55); border:1px solid var(--borde);
+    transition: transform .15s, border-color .15s, background .15s, box-shadow .15s; }
+  .accesos a:hover { transform: translateY(-4px); border-color: rgba(56,214,255,.6); background:rgba(18,50,74,.6); box-shadow:0 8px 26px rgba(56,214,255,.18); }
+  .accesos i { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    font-style:normal; font-family:Orbitron, sans-serif; font-weight:700; font-size:16px; color:#021018; }
+  .pista { position:fixed; bottom:22px; font-size:15px; color:var(--tenue); letter-spacing:1px; z-index:2; }
+  @media (max-height: 820px) { .pista { display:none; } }   /* ventana bajita: la frase se montaba encima de los accesos */
+  /* icono oficial de cada web (el mismo que usa el navegador en la pestaña) [04-nov] */
+  .accesos i.oficial { background:#fff !important; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+  .accesos i img { width:28px; height:28px; object-fit:contain; }
+  .pista b { color:var(--cian); font-weight:600; }
+
+  /* entrada escalonada */
+  .entra { opacity:0; transform: translateY(18px); filter: blur(6px); animation: entra .8s cubic-bezier(.2,.8,.2,1) var(--d,0s) forwards; }
+  @keyframes entra { to { opacity:1; transform:none; filter:none; } }
+  .anillo.entra { transform: scale(.4); animation-name: entraAnillo; animation-duration: 1.1s; }
+  @keyframes entraAnillo { 0% { opacity:0; transform: scale(.4) rotate(-90deg); filter: blur(8px); } 70% { opacity:1; transform: scale(1.06) rotate(0); filter:none; } 100% { opacity:1; transform:none; filter:none; } }
+
+  /* apertura corta (pestañas nuevas): sin el espectáculo completo */
+  body.corta .barrido, body.corta .destello { display:none; }
+  body.corta .entra { animation-duration:.45s; --d:0s !important; }
+  body.corta .dibuja { animation-duration:.5s; --d:0s !important; }
+  body.corta::before { animation-duration:.4s; }
+  @media (prefers-reduced-motion: reduce) { .barrido, .destello { display:none; } .entra, .dibuja { animation-duration:.01s !important; } }
+  @media (max-width: 640px) { .accesos { grid-template-columns: repeat(3, 92px); } .anillo { width:180px; height:180px; } }
+</style>
+</head>
+<body>
+  <canvas id="fx"></canvas>
+  <div class="barrido"></div>
+  <div class="destello"></div>
+  <main>
+    <div class="anillo entra" style="--d:.55s" id="anillo" title="JARVIS Browser" aria-hidden="true">
+      <svg viewBox="0 0 200 200" class="gira">
+        <circle cx="100" cy="100" r="97" fill="none" stroke="rgba(56,214,255,.35)" stroke-width="1" class="dibuja" style="--l:610;--d:.6s"/>
+        <circle cx="100" cy="100" r="90" fill="none" stroke="#38d6ff" stroke-width="5" stroke-dasharray="6 9" opacity=".75"/>
+      </svg>
+      <svg viewBox="0 0 200 200" class="gira2">
+        <circle cx="100" cy="100" r="78" fill="none" stroke="#9ae9ff" stroke-width="3" stroke-linecap="round" class="dibuja" style="--l:490;--d:.75s"/>
+      </svg>
+      <svg viewBox="0 0 200 200" class="gira3">
+        <circle cx="100" cy="100" r="69" fill="none" stroke="rgba(56,214,255,.55)" stroke-width="1.5" stroke-dasharray="40 395" stroke-linecap="round"/>
+        <circle cx="100" cy="31" r="2.6" fill="#eaffff"/>
+      </svg>
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="62" fill="url(#nuc)" class="nucleo"/>
+        <defs><radialGradient id="nuc"><stop offset="0" stop-color="rgba(56,214,255,.20)"/><stop offset="1" stop-color="rgba(56,214,255,0)"/></radialGradient></defs>
+      </svg>
+      <div class="hora"><b id="hora">--:--</b><span id="fecha"></span></div>
+    </div>
+    <h1 class="titulo entra" style="--d:1.1s" id="titulo">JARVIS <span class="b">BROWSER</span></h1>
+    <p class="subt entra" style="--d:1.5s" id="subt"><i>●</i> Sistemas en línea</p>
+    <p class="saludo entra" style="--d:1.7s" id="saludo">Hola</p>
+    <form class="entra" style="--d:1.9s" action="https://www.google.com/search" method="get" autocomplete="off">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38d6ff" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+      <input name="q" placeholder="Busca en Google o escribe una dirección" autofocus>
+    </form>
+    <nav class="accesos">
+      <a class="entra" style="--d:2.05s" href="https://www.youtube.com"><i style="background:#ff4d4d">▶</i>YouTube</a>
+      <a class="entra" style="--d:2.12s" href="https://mail.google.com"><i style="background:#ffd166">@</i>Gmail</a>
+      <a class="entra" style="--d:2.19s" href="https://drive.google.com"><i style="background:#38d6ff">D</i>Drive</a>
+      <a class="entra" style="--d:2.26s" href="https://web.whatsapp.com"><i style="background:#28c840">W</i>WhatsApp</a>
+      <a class="entra" style="--d:2.33s" href="https://www.google.com/maps" data-icono="https://maps.google.com"><i style="background:#9b8cff">M</i>Mapas</a>
+      <a class="entra" style="--d:2.40s" href="https://news.google.com"><i style="background:#ff9f43">N</i>Noticias</a>
+    </nav>
+  </main>
+  <p class="pista entra" style="--d:2.6s">Di <b>"Jarvis, abre YouTube"</b> o <b>"Jarvis, busca…"</b> y lo hago por ti</p>
+<script>
+  // Idioma: el del navegador (JARVIS lo arranca con el idioma elegido en Ajustes) [28-oct]
+  const L = (navigator.language || 'es').slice(0, 2);
+  const T = {
+    es: { hola: ['Buenas noches', 'Buenos días', 'Buenas tardes'], buscar: 'Busca en Google o escribe una dirección', mapas: 'Mapas', noticias: 'Noticias', linea: 'Sistemas en línea',
+          pista: 'Di <b>"Jarvis, abre YouTube"</b> o <b>"Jarvis, busca…"</b> y lo hago por ti', ampm: true, titulo: 'Nueva pestaña' },
+    en: { hola: ['Good evening', 'Good morning', 'Good afternoon'], buscar: 'Search Google or type an address', mapas: 'Maps', noticias: 'News', linea: 'All systems online',
+          pista: 'Say <b>“Jarvis, open YouTube”</b> or <b>“Jarvis, search…”</b> and I’ll do it for you', ampm: true, titulo: 'New tab' },
+    pt: { hola: ['Boa noite', 'Bom dia', 'Boa tarde'], buscar: 'Pesquise no Google ou digite um endereço', mapas: 'Mapas', noticias: 'Notícias', linea: 'Sistemas online',
+          pista: 'Diga <b>“Jarvis, abre o YouTube”</b> ou <b>“Jarvis, pesquisa…”</b> e eu faço por você', ampm: false, titulo: 'Nova guia' },
+    fr: { hola: ['Bonsoir', 'Bonjour', 'Bon après-midi'], buscar: 'Rechercher sur Google ou saisir une adresse', mapas: 'Maps', noticias: 'Actualités', linea: 'Systèmes en ligne',
+          pista: 'Dites <b>« Jarvis, ouvre YouTube »</b> ou <b>« Jarvis, cherche… »</b> et je m’en occupe', ampm: false, titulo: 'Nouvel onglet' },
+    de: { hola: ['Guten Abend', 'Guten Morgen', 'Guten Tag'], buscar: 'Mit Google suchen oder Adresse eingeben', mapas: 'Maps', noticias: 'Nachrichten', linea: 'Systeme online',
+          pista: 'Sagen Sie <b>„Jarvis, öffne YouTube“</b> oder <b>„Jarvis, suche …“</b> und ich erledige das', ampm: false, titulo: 'Neuer Tab' },
+    it: { hola: ['Buonasera', 'Buongiorno', 'Buon pomeriggio'], buscar: 'Cerca con Google o digita un indirizzo', mapas: 'Maps', noticias: 'Notizie', linea: 'Sistemi online',
+          pista: 'Di’ <b>“Jarvis, apri YouTube”</b> o <b>“Jarvis, cerca…”</b> e lo faccio io', ampm: false, titulo: 'Nuova scheda' },
+  }[L] || null;
+  const t = T || { hola: ['Good evening', 'Good morning', 'Good afternoon'], buscar: 'Search Google or type an address', mapas: 'Maps', noticias: 'News', linea: 'All systems online',
+    pista: 'Say <b>“Jarvis, open YouTube”</b> or <b>“Jarvis, search…”</b>', ampm: true, titulo: 'New tab' };
+  document.documentElement.lang = L;
+  document.title = `${t.titulo} · JARVIS Browser`;
+  document.querySelector('input[name=q]').placeholder = t.buscar;
+  document.querySelector('a[href="https://www.google.com/maps"]').lastChild.textContent = t.mapas;
+  document.querySelector('a[href="https://news.google.com"]').lastChild.textContent = t.noticias;
+  document.querySelector('.pista').innerHTML = t.pista;
+  // iconos oficiales: si no hay internet, se queda la letra de color
+  document.querySelectorAll('.accesos a').forEach((a) => {
+    const i = a.querySelector('i'); const im = new Image();
+    im.alt = ''; im.referrerPolicy = 'no-referrer';
+    im.onload = () => { if (im.naturalWidth > 16) { i.textContent = ''; i.classList.add('oficial'); i.appendChild(im); } };
+    im.src = 'https://www.google.com/s2/favicons?sz=128&domain_url=' + encodeURIComponent(a.dataset.icono || a.href);
+  });
+  document.getElementById('subt').innerHTML = '<i>●</i> ' + t.linea;
+  const fecha = new Intl.DateTimeFormat(L, { weekday: 'short', day: 'numeric', month: 'short' });
+  function tic() {
+    const d = new Date();
+    let h = d.getHours(); const m = String(d.getMinutes()).padStart(2, '0');
+    if (t.ampm) { const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; document.getElementById('hora').textContent = `${h}:${m} ${ap}`; }
+    else document.getElementById('hora').textContent = `${String(h).padStart(2, '0')}:${m}`;
+    document.getElementById('fecha').textContent = fecha.format(d).replace(/\./g, '');
+    const hr = d.getHours();
+    document.getElementById('saludo').textContent = hr < 5 ? t.hola[0] : hr < 12 ? t.hola[1] : hr < 19 ? t.hola[2] : t.hola[0];
+  }
+  tic(); setInterval(tic, 1000);
+
+  // ── Animación de apertura ──────────────────────────────────────────────
+  // Completa al abrir el navegador (o si hace rato que no se ve); corta en cada pestaña nueva.
+  let completa = true;
+  try { const u = +localStorage.getItem('jb_intro') || 0; completa = Date.now() - u > 3 * 60 * 1000; localStorage.setItem('jb_intro', Date.now()); } catch {}
+  const calma = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!completa || calma) document.body.classList.add('corta');
+
+  // Título que se "descifra" letra por letra
+  function descifra(el, retraso) {
+    const partes = [...el.childNodes].map(n => ({ n, txt: n.textContent }));
+    const sig = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789#$%&*<>/';
+    const total = partes.reduce((a, p) => a + p.txt.length, 0);
+    const t0 = performance.now() + retraso; const dur = 900;
+    (function paso(ahora) {
+      const k = Math.max(0, Math.min(1, (ahora - t0) / dur)); let i = 0;
+      for (const p of partes) {
+        p.n.textContent = [...p.txt].map(c => { const lista = i++ / total < k; return c === ' ' || lista ? c : sig[(Math.random() * sig.length) | 0]; }).join('');
+      }
+      if (k < 1) requestAnimationFrame(paso);
+    })(performance.now());
+  }
+  if (completa && !calma) descifra(document.getElementById('titulo'), 1100);
+
+  // Fondo vivo: salto al hiperespacio al abrir → red de partículas que sigue al ratón
+  const cv = document.getElementById('fx'), cx = cv.getContext('2d');
+  let W, H, dpr = Math.min(devicePixelRatio || 1, 2);
+  function medida() { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  medida(); addEventListener('resize', medida);
+  const N = Math.min(150, Math.round(innerWidth * innerHeight / 11000));
+  const pts = Array.from({ length: N }, () => ({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, vx: (Math.random() - .5) * .25, vy: (Math.random() - .5) * .25, r: Math.random() * 1.6 + .4 }));
+  const estrellas = Array.from({ length: 420 }, () => ({ a: Math.random() * Math.PI * 2, d: Math.random() * 40, v: Math.random() * 2 + 1.2 }));
+  let raton = { x: -999, y: -999 };
+  addEventListener('mousemove', e => { raton = { x: e.clientX, y: e.clientY }; });
+  const anilloEl = document.getElementById('anillo');
+  const inicio = performance.now(); const WARP = (completa && !calma) ? 1300 : 0;
+  let onda = (completa && !calma) ? 0 : -1;
+  function dibujar(ahora) {
+    const t = ahora - inicio;
+    const rc = anilloEl.getBoundingClientRect(); const ox = rc.left + rc.width / 2, oy = rc.top + rc.height / 2;
+    cx.clearRect(0, 0, W, H);
+    if (t < WARP) {
+      // estrellas que salen disparadas desde el centro
+      const k = t / WARP, vel = 1 + k * k * 30;
+      cx.lineCap = 'round';
+      for (const s of estrellas) {
+        s.d += s.v * vel;
+        const x1 = ox + Math.cos(s.a) * s.d, y1 = oy + Math.sin(s.a) * s.d;
+        const lar = Math.min(260, s.v * vel * 5);
+        const x0 = ox + Math.cos(s.a) * Math.max(0, s.d - lar), y0 = oy + Math.sin(s.a) * Math.max(0, s.d - lar);
+        cx.strokeStyle = `rgba(154,233,255,${Math.min(1, .25 + k)})`; cx.lineWidth = .6 + k * 1.6;
+        cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x1, y1); cx.stroke();
+        if (s.d > Math.hypot(W, H)) s.d = Math.random() * 20;
+      }
+      // resplandor central creciendo
+      const g = cx.createRadialGradient(ox, oy, 0, ox, oy, 60 + k * 160);
+      g.addColorStop(0, `rgba(200,245,255,${.15 + k * .6})`); g.addColorStop(1, 'rgba(56,214,255,0)');
+      cx.fillStyle = g; cx.beginPath(); cx.arc(ox, oy, 60 + k * 160, 0, Math.PI * 2); cx.fill();
+    } else {
+      // onda expansiva al terminar el salto
+      if (onda >= 0) {
+        onda += 18;
+        const a = Math.max(0, 1 - onda / Math.hypot(W, H));
+        cx.strokeStyle = `rgba(154,233,255,${a})`; cx.lineWidth = 3 * a + .5;
+        cx.beginPath(); cx.arc(ox, oy, onda, 0, Math.PI * 2); cx.stroke();
+        cx.strokeStyle = `rgba(56,214,255,${a * .5})`; cx.lineWidth = 1;
+        cx.beginPath(); cx.arc(ox, oy, onda * .7, 0, Math.PI * 2); cx.stroke();
+        if (a <= 0) onda = -1;
+      }
+      // red de partículas
+      const fade = Math.min(1, (t - WARP) / 900);
+      for (const p of pts) {
+        p.x += p.vx; p.y += p.vy;
+        const dx = p.x - raton.x, dy = p.y - raton.y, d2 = dx * dx + dy * dy;
+        if (d2 < 14000) { p.x += dx * .012; p.y += dy * .012; }
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0; if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      }
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i];
+        for (let j = i + 1; j < pts.length; j++) {
+          const b = pts[j], dx = a.x - b.x, dy = a.y - b.y, d = dx * dx + dy * dy;
+          if (d < 12000) { cx.strokeStyle = `rgba(56,214,255,${(1 - d / 12000) * .22 * fade})`; cx.lineWidth = .7; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(b.x, b.y); cx.stroke(); }
+        }
+        const dr = Math.hypot(a.x - raton.x, a.y - raton.y);
+        if (dr < 160) { cx.strokeStyle = `rgba(154,233,255,${(1 - dr / 160) * .35 * fade})`; cx.beginPath(); cx.moveTo(a.x, a.y); cx.lineTo(raton.x, raton.y); cx.stroke(); }
+        cx.fillStyle = `rgba(154,233,255,${.75 * fade})`; cx.beginPath(); cx.arc(a.x, a.y, a.r, 0, Math.PI * 2); cx.fill();
+      }
+      // pulso suave detrás del reloj
+      const pul = (Math.sin(t / 900) + 1) / 2;
+      const g = cx.createRadialGradient(ox, oy, 0, ox, oy, 260);
+      g.addColorStop(0, `rgba(56,214,255,${.06 + pul * .05})`); g.addColorStop(1, 'rgba(56,214,255,0)');
+      cx.fillStyle = g; cx.beginPath(); cx.arc(ox, oy, 260, 0, Math.PI * 2); cx.fill();
+    }
+    if (!document.hidden) requestAnimationFrame(dibujar); else setTimeout(() => requestAnimationFrame(dibujar), 500);
+  }
+  requestAnimationFrame(dibujar);
+
+  // Pulsa el reloj para volver a ver la animación completa
+  document.getElementById('anillo').addEventListener('click', () => { try { localStorage.removeItem('jb_intro'); } catch {} location.reload(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "jarvis-navegador",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Navegador JARVIS: interfaz HUD, controlado por voz y por el piloto de JARVIS",
+  "main": "main.js"
+}
