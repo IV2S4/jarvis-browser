@@ -264,7 +264,8 @@
   "Hablar": "Parler",
   "🎙 Te escucho…": "🎙 Je t'écoute…",
   "Entendiendo…": "Je comprends…",
-  "Listo.": "C'est fait."
+  "Listo.": "C'est fait.",
+  "La cámara no se enciende sola: pulsa ✋ en la barra de abajo cuando quieras usarla": "La caméra ne s'allume pas toute seule : cliquez sur ✋ dans la barre du bas quand vous voulez l'utiliser"
  },
  "backend": {
   "- {0} a las {1}": "- {0} à {1}",

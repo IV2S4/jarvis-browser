@@ -301,7 +301,7 @@ function sitioDeVoz(q) {
   if (!m) return null;
   let obj = m[m.length - 1].replace(/\s+(en|in)\s+(una|otra|la|a|another)?\s*(nueva\s+|new\s+)?(pesta[nñ]a|tab)(\s+nueva)?$/i, '').replace(/\s+(por favor|please)$/i, '').trim();
   const explicita = /\b(p[aá]gina|web|sitio|website|site|page)\b/i.test(obj);
-  obj = obj.replace(/^(la|el|una|un|the|mi|my)\s+/i, '').replace(/^(p[aá]gina|web|sitio|website|site|page)(\s+web)?\s*/i, '').replace(/^(de|del|of)\s+/i, '').replace(/^(la|el|the)\s+/i, '').trim();
+  obj = obj.replace(/^(la|el|una|un|the|mi|my)\s+/i, '').replace(/^(p[aá]gina|web|sitio|website|site|page)(\s+web)?\s*/i, '').replace(/^(de|del|of)\s+/i, '').replace(/^(la|el|the)\s+/i, '').replace(/\s+(website|web\s*site|site|homepage|home\s*page|page|web|p[aá]gina)$/i, '').trim();   // «the GitHub website» → GitHub
   const clave = sinTildes(obj).replace(/\s+punto\s+/g, '.').replace(/^www\./, '');
   if (!clave || /\b(pesta[nñ]a|tab|ventana|window|documento|archivo|file|configuraci[oó]n|ajustes|settings|descargas|downloads|historial|history|favoritos|bookmarks)\b/.test(clave)) return null;
   if (SITIOS[clave]) return { url: 'https://' + SITIOS[clave], escribir: SITIOS[clave].split('/')[0], nombre: obj };

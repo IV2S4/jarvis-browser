@@ -265,7 +265,8 @@
   "Hablar": "Sprechen",
   "🎙 Te escucho…": "🎙 Ich höre zu…",
   "Entendiendo…": "Verstehe…",
-  "Listo.": "Erledigt."
+  "Listo.": "Erledigt.",
+  "La cámara no se enciende sola: pulsa ✋ en la barra de abajo cuando quieras usarla": "Die Kamera schaltet sich nicht von selbst ein: Klicke unten in der Leiste auf ✋, wenn du sie nutzen willst"
  },
  "backend": {
   "- {0} a las {1}": "- {0} um {1}",

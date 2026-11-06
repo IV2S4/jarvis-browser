@@ -57,18 +57,26 @@ function gApagar(dejarChip) {
   G.stream = null; G.video = null; G.rastro = []; G.pose = '';
   if (!dejarChip) $('gestos-chip').hidden = true;
 }
-// ¿hay que tener la cámara encendida? (apagada mientras juegas o con la ventana escondida)
+// La cámara NO se enciende sola al abrir el navegador: solo cuando pulsas ✋ en la barra de abajo [05-nov]
+let gQuiero = false;
+function gChipApagado() { gChip('✋ ' + T('GESTOS OFF', 'GESTURES OFF'), 'apagado'); $('gestos-chip').title = T('Pulsa para encender la cámara y usar los gestos', 'Click to turn on the camera and use gestures'); }
+// ¿hay que tener la cámara encendida? (solo si la pediste, y apagada mientras juegas o con la ventana escondida)
 function gRevisar() {
-  const quiero = Boolean(E.gestos) && !document.hidden && !E.gaming;
+  const quiero = Boolean(E.gestos) && gQuiero && !document.hidden && !E.gaming;
   if (quiero && G.activo && G.camara !== E.camaraGestos) { gApagar(); gEncender(); return; }
   if (quiero && !G.activo && !G.error) gEncender();
   else if (!quiero && G.activo) gApagar();
-  if (!E.gestos) { G.error = ''; $('gestos-chip').hidden = true; }
-  $('gesto-cam').hidden = !E.gestosVista;
+  if (!E.gestos) { G.error = ''; gQuiero = false; $('gestos-chip').hidden = true; }
+  else if (!gQuiero && !G.activo && !G.cargando) gChipApagado();
+  $('gesto-cam').hidden = !E.gestosVista || !G.activo;
 }
 document.addEventListener('visibilitychange', gRevisar);
 window.nav.en('estado', () => setTimeout(gRevisar, 0));
-$('gestos-chip').addEventListener('click', () => { G.error = ''; gRevisar(); });
+$('gestos-chip').addEventListener('click', () => {   // ✋ enciende / apaga la cámara de los gestos
+  G.error = '';
+  if (G.activo || G.cargando) { gQuiero = false; gApagar(true); gChipApagado(); $('gesto-cam').hidden = true; sonido('pestana'); return; }
+  gQuiero = true; gRevisar();
+});
 
 // ── qué forma tiene la mano ──
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);

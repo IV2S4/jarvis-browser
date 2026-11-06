@@ -263,7 +263,8 @@
   "Hablar": "Parla",
   "🎙 Te escucho…": "🎙 Ti ascolto…",
   "Entendiendo…": "Sto capendo…",
-  "Listo.": "Fatto."
+  "Listo.": "Fatto.",
+  "La cámara no se enciende sola: pulsa ✋ en la barra de abajo cuando quieras usarla": "La fotocamera non si accende da sola: clicca ✋ nella barra in basso quando vuoi usarla"
  },
  "backend": {
   "- {0} a las {1}": "- {0} alle {1}",

@@ -652,7 +652,8 @@
   "No pude registrarlo en Windows": "I couldn't register it in Windows",
   "reabre la última pestaña cerrada (Ctrl+Mayús+T)": "reopens the last closed tab (Ctrl+Shift+T)",
   "ACTUALIZAR": "UPDATE",
-  "· ACTUALIZAR": "· UPDATE"
+  "· ACTUALIZAR": "· UPDATE",
+  "La cámara no se enciende sola: pulsa ✋ en la barra de abajo cuando quieras usarla": "The camera doesn't turn on by itself: click ✋ in the bottom bar when you want to use it"
  },
  "backend": {
   "- {0} a las {1}": "- {0} at {1}",
