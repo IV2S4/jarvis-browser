@@ -108,7 +108,7 @@ The phone version has almost all of the above, adapted for touch:
 - Normal and private tabs, bookmarks, history, downloads and find in page.
 - JARVIS with chat and voice, **"Jarvis, open YouTube"**, autopilot, "what do you see?", summarize and translate.
 - Threat scanner, ad blocker and Google Safe Browsing.
-- **Picture-in-picture video** when you leave the app, desktop mode, text zoom, sharing and default browser.
+- **Floating video (picture-in-picture)** that keeps playing with sound, with ⏪ ⏯ ⏩ buttons in the floating window — from the menu (▣) or automatically when you leave the app, desktop mode, text zoom, sharing and default browser.
 - Phone monitor (battery, RAM, network), terminal, price watcher, Telegram, memory, themes, and your PC's local brain over WiFi.
 - **Gesture control** with the phone's front camera (☰ › Gesture control to turn it on and off).
 - **Settings backup** encrypted with your own password, to move your keys and settings to another phone.

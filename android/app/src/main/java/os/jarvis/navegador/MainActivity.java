@@ -702,16 +702,117 @@ public class MainActivity extends Activity {
     }
 
     // ═══════════════════════════ video flotante (PiP de Android) ═══════════════════════════
-    boolean entrarPip() {
-        if (Build.VERSION.SDK_INT < 26) return false;
-        if (activa != null) activa.w.evaluateJavascript("(()=>{const v=[...document.querySelectorAll('video')].find(x=>!x.paused)||document.querySelector('video');if(!v)return;document.body.style.background='#000';v.scrollIntoView({block:'center'});})()", null);
-        try { return enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build()); } catch (Exception e) { return false; }
+    static final String ACCION_PIP = "os.jarvis.navegador.PIP";
+    android.content.BroadcastReceiver receptorPip;
+    String jsPip;
+    boolean pipSonando, pipHayVideo, detenida = true;
+    int pipW = 16, pipH = 9;
+    long finPip;
+    final Runnable vigiaPip = new Runnable() { @Override public void run() {   // mira cada poco si hay un video sonando (botones y entrada automática)
+        ui.removeCallbacks(this);
+        if (detenida) return;
+        pipEnPagina("window.__jarvisPip.estado()");
+        ui.postDelayed(this, 2500);
+    } };
+    String jsPip() {
+        if (jsPip == null) {
+            try (InputStream in = getAssets().open("shell/pip.js")) {
+                ByteArrayOutputStream o = new ByteArrayOutputStream(); byte[] buf = new byte[8192]; int n;
+                while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                jsPip = o.toString("UTF-8");
+            } catch (Exception e) { jsPip = ""; }
+        }
+        return jsPip;
     }
-    @Override public void onPictureInPictureModeChanged(boolean pip, Configuration c) { super.onPictureInPictureModeChanged(pip, c); enPip = pip; acomodar(); avisarEstado(); }
+    void pipEnPagina(String llamada) {
+        if (activa == null) return;
+        final WebView pw = activa.w;
+        final String llamar = "(()=>{try{return " + llamada + "}catch(e){return null}})()";
+        pw.evaluateJavascript("!!window.__jarvisPip", yaEsta -> pw.evaluateJavascript(("true".equals(yaEsta) ? "" : jsPip() + "\n;") + llamar, v -> {
+            try {
+                if (v == null || !v.startsWith("{")) return;
+                JSONObject e = new JSONObject(v);
+                boolean antes = pipSonando; int aw = pipW, ah = pipH; boolean hay = pipHayVideo;
+                pipHayVideo = e.optBoolean("hay"); pipSonando = e.optBoolean("sonando");
+                int w = e.optInt("w"), h = e.optInt("h"); if (w > 0 && h > 0) { pipW = w; pipH = h; }
+                if (antes != pipSonando || aw != pipW || ah != pipH || hay != pipHayVideo) ponerParamsPip();
+            } catch (Exception ignored) { }
+        }));
+    }
+    void registrarPip() {
+        if (receptorPip != null) return;
+        receptorPip = new android.content.BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) {
+            int q = i.getIntExtra("que", -1);
+            if (q == 0) { pipSonando = !pipSonando; ponerParamsPip(); pipEnPagina("window.__jarvisPip.alternar()"); }
+            else if (q == 1) pipEnPagina("window.__jarvisPip.mover(-10)");
+            else if (q == 2) pipEnPagina("window.__jarvisPip.mover(10)");
+        } };
+        IntentFilter f = new IntentFilter(ACCION_PIP);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(receptorPip, f, Context.RECEIVER_NOT_EXPORTED); else registerReceiver(receptorPip, f);
+    }
+    android.app.RemoteAction botonPip(int icono, String titulo, int que) {
+        Intent i = new Intent(ACCION_PIP).setPackage(getPackageName()).putExtra("que", que);
+        android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(this, 100 + que, i, android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        return new android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource("android", icono), titulo, titulo, pi);
+    }
+    PictureInPictureParams paramsPip() {
+        double r = (double) pipW / pipH; int w = pipW, h = pipH;
+        if (r > 2.39) { w = 239; h = 100; } else if (r < 1 / 2.39) { w = 100; h = 239; }
+        boolean en = !Locale.getDefault().getLanguage().equals("es");
+        List<android.app.RemoteAction> acc = new ArrayList<>();
+        acc.add(botonPip(android.R.drawable.ic_media_rew, en ? "Back 10 s" : "Atrás 10 s", 1));
+        acc.add(pipSonando ? botonPip(android.R.drawable.ic_media_pause, en ? "Pause" : "Pausa", 0) : botonPip(android.R.drawable.ic_media_play, "Play", 0));
+        acc.add(botonPip(android.R.drawable.ic_media_ff, en ? "Forward 10 s" : "Adelante 10 s", 2));
+        PictureInPictureParams.Builder b = new PictureInPictureParams.Builder().setAspectRatio(new Rational(w, h)).setActions(acc);
+        if (Build.VERSION.SDK_INT >= 31) {   // al salir de la app con un video sonando, entra solo en la ventanita (Android 12+)
+            b.setAutoEnterEnabled(!enPip && pipSonando && completaOPagina() && leerConfig().optBoolean("pipAuto", true));
+            b.setSeamlessResizeEnabled(true);
+        }
+        return b.build();
+    }
+    boolean completaOPagina() { return activa != null && activa.url().startsWith("http"); }
+    void ponerParamsPip() { try { setPictureInPictureParams(paramsPip()); } catch (Exception ignored) { } }
+    boolean entrarPip() {
+        if (activa == null) return false;
+        registrarPip();
+        activa.w.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        activa.w.onResume(); activa.w.resumeTimers();
+        pipEnPagina("window.__jarvisPip.on()");
+        try { return enterPictureInPictureMode(paramsPip()); } catch (Exception e) { return false; }
+    }
+    @Override public void onPictureInPictureModeChanged(boolean pip, Configuration c) {
+        super.onPictureInPictureModeChanged(pip, c);
+        enPip = pip; acomodar(); avisarEstado();
+        if (activa != null) {
+            if (pip) {   // la página sigue viva y sonando dentro de la ventanita
+                registrarPip();
+                activa.w.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
+                activa.w.getSettings().setMediaPlaybackRequiresUserGesture(false);
+                activa.w.onResume(); activa.w.resumeTimers();
+                pipEnPagina("window.__jarvisPip.on()");
+            } else {
+                finPip = System.currentTimeMillis();
+                pipEnPagina("window.__jarvisPip.off()");
+                activa.w.getSettings().setMediaPlaybackRequiresUserGesture(true);
+            }
+        }
+        ponerParamsPip();
+        ui.post(vigiaPip);
+    }
+    @Override protected void onResume() { super.onResume(); detenida = false; registrarPip(); ui.post(vigiaPip); }
+    @Override protected void onStop() {
+        super.onStop();
+        detenida = true; ui.removeCallbacks(vigiaPip);
+        if (System.currentTimeMillis() - finPip < 2000) pipEnPagina("window.__jarvisPip.pausar()");   // cerraste la ventanita con la X → el video se para
+    }
+    @Override protected void onDestroy() {
+        if (receptorPip != null) try { unregisterReceiver(receptorPip); } catch (Exception ignored) { }
+        super.onDestroy();
+    }
     @Override protected void onUserLeaveHint() {   // sales de la app con un video sonando → sigue en una ventanita
         super.onUserLeaveHint();
-        if (activa == null) return;
-        activa.w.evaluateJavascript("(()=>[...document.querySelectorAll('video')].some(v=>!v.paused&&!v.muted&&v.readyState>2))()", v -> { if ("true".equals(v) && leerConfig().optBoolean("pipAuto", true)) entrarPip(); });
+        if (activa == null || enPip || Build.VERSION.SDK_INT >= 31) return;   // en Android 12+ ya entra sola (setAutoEnterEnabled)
+        if (pipSonando && leerConfig().optBoolean("pipAuto", true)) entrarPip();
     }
 
     // ═══════════════════════════ botón atrás ═══════════════════════════

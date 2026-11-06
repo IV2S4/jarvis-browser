@@ -7,8 +7,8 @@ android {
         applicationId 'os.jarvis.navegador'
         minSdk 30
         targetSdk 36
-        versionCode 8
-        versionName '1.0.7'
+        versionCode 10
+        versionName '1.0.9'
     }
     // 🔒 [seguridad 05-nov] versión «release»: firmada con la llave propia del usuario y SIN modo depuración
     // (la llave y su clave viven fuera del proyecto, en ~/.config/jarvis/android/, nunca en git)

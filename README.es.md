@@ -108,7 +108,7 @@ La versión del teléfono tiene casi todo lo anterior, acomodado para pantalla t
 - Pestañas normales y privadas, favoritos, historial, descargas y buscar en la página.
 - JARVIS con chat y voz, **"Jarvis, abre YouTube"**, piloto automático, "¿qué ves?", resumir y traducir.
 - Escáner de amenazas, bloqueador de anuncios y Safe Browsing de Google.
-- **Video flotante** al salir de la app, modo escritorio, zoom del texto, compartir y navegador predeterminado.
+- **Video flotante** que sigue sonando, con botones ⏪ ⏯ ⏩ en la ventanita — desde el menú (▣) o solo al salir de la app, modo escritorio, zoom del texto, compartir y navegador predeterminado.
 - Monitor del teléfono (batería, RAM, internet), terminal, vigilante de precios, Telegram, memoria, temas y el cerebro local de tu PC por WiFi.
 - **Control con gestos** con la cámara de adelante del teléfono (☰ › Control con gestos para encenderlo y apagarlo).
 - **Respaldo de ajustes** cifrado con tu propia clave, para pasar tus llaves y ajustes a otro teléfono.
