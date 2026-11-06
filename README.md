@@ -110,6 +110,7 @@ The phone version has almost all of the above, adapted for touch:
 - Threat scanner, ad blocker and Google Safe Browsing.
 - **Picture-in-picture video** when you leave the app, desktop mode, text zoom, sharing and default browser.
 - Phone monitor (battery, RAM, network), terminal, price watcher, Telegram, memory, themes, and your PC's local brain over WiFi.
+- **Gesture control** with the phone's front camera (☰ › Gesture control to turn it on and off).
 - **Settings backup** encrypted with your own password, to move your keys and settings to another phone.
 
 <div align="center">
@@ -118,7 +119,7 @@ The phone version has almost all of the above, adapted for touch:
 
 </div>
 
-Still **PC only**: gesture control, always-on voice (hands-free "Jarvis…"), dictation in page text boxes, chatting with PDFs, the command center, gaming mode and clips.
+Still **PC only**: always-on voice (hands-free "Jarvis…"), dictation in page text boxes, chatting with PDFs, the command center, gaming mode and clips.
 
 ---
 
@@ -213,7 +214,9 @@ Tap 🎙 in the chat (or on PC, with always-on voice enabled, just say "Jarvis�
 
 ## Gesture control (PC)
 
-Turn it on in Settings → Cyber HUD. It uses your PC's camera (or your phone connected as a webcam). **Everything is processed on your PC; no image ever leaves it.**
+Turn it on in Settings → Cyber HUD, then **click the hand ✋ in the bottom bar** whenever you want to use it: the camera never turns on by itself. It uses your PC's camera (or your phone connected as a webcam). **Everything is processed on your PC; no image ever leaves it.**
+
+On **Android** it works the same with the phone's front camera: ☰ › **Gesture control** (the first time it downloads the hand detector, 7.5 MB).
 
 | Gesture | Action |
 |---|---|

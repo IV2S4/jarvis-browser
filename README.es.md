@@ -110,6 +110,7 @@ La versión del teléfono tiene casi todo lo anterior, acomodado para pantalla t
 - Escáner de amenazas, bloqueador de anuncios y Safe Browsing de Google.
 - **Video flotante** al salir de la app, modo escritorio, zoom del texto, compartir y navegador predeterminado.
 - Monitor del teléfono (batería, RAM, internet), terminal, vigilante de precios, Telegram, memoria, temas y el cerebro local de tu PC por WiFi.
+- **Control con gestos** con la cámara de adelante del teléfono (☰ › Control con gestos para encenderlo y apagarlo).
 - **Respaldo de ajustes** cifrado con tu propia clave, para pasar tus llaves y ajustes a otro teléfono.
 
 <div align="center">
@@ -118,7 +119,7 @@ La versión del teléfono tiene casi todo lo anterior, acomodado para pantalla t
 
 </div>
 
-Todavía **solo en la PC**: control con gestos, voz siempre activa ("Jarvis…" sin tocar), dictado en las cajas de las páginas, hablar con PDFs, centro de mando, modo gaming y clips.
+Todavía **solo en la PC**: voz siempre activa ("Jarvis…" sin tocar), dictado en las cajas de las páginas, hablar con PDFs, centro de mando, modo gaming y clips.
 
 ---
 
@@ -213,7 +214,9 @@ Pulsa 🎙 en el chat (o en la PC, si activaste la voz siempre activa, di "Jarvi
 
 ## Control con gestos (PC)
 
-Actívalo en Configuración → Cyber HUD. Usa la cámara de la PC (o la de tu celular conectado como cámara web). **Todo se procesa dentro de tu PC: ninguna imagen sale de ella.**
+Actívalo en Configuración → Cyber HUD y después **pulsa la mano ✋ de la barra de abajo** cada vez que quieras usarlo: la cámara nunca se enciende sola. Usa la cámara de la PC (o la de tu celular conectado como cámara web). **Todo se procesa dentro de tu PC: ninguna imagen sale de ella.**
+
+En **Android** funciona igual con la cámara de adelante del teléfono: ☰ › **Control con gestos** (la primera vez baja el detector de manos, 7,5 MB).
 
 | Gesto | Acción |
 |---|---|

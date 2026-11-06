@@ -1,8 +1,9 @@
 'use strict';
 // ═══ Versión Android del cerebro (generada del cerebro.js del navegador de PC) [04-nov] ═══
 // Las peticiones a internet las hace la parte nativa (fetch = Nativo.fetch): así no hay CORS y las llaves no salen de Android.
-const fetch = (...a) => Nativo.fetch(...a);
-const AbortSignal = { timeout: (ms) => ({ ms }) };
+// (con otro nombre: si se llamaran «fetch» y «AbortSignal», tapaban los del navegador y el detector de manos no cargaba) [05-nov]
+const fetchN = (...a) => Nativo.fetch(...a);
+const SenalN = { timeout: (ms) => ({ ms }) };
 // Cerebro propio del Navegador JARVIS [2026-10-28]
 // · Piensa con Gemini, Claude u OpenAI (la llave que tenga el usuario; si una falla, prueba la siguiente).
 // · Las llaves se guardan cifradas por Windows (safeStorage) en ~/.config/jarvis/navegador-llaves.json (modo 600).
@@ -20,7 +21,7 @@ const MODELOS = {
 const local = { activo: false, url: 'http://127.0.0.1:8080', primero: false, arrancar: null };
 function configurarLocal(o) { Object.assign(local, o || {}); }
 async function localVivo(espera = 1500) {
-  try { const r = await fetch(`${local.url.replace(/\/+$/, '')}/health`, { signal: AbortSignal.timeout(espera) }); return r.ok; } catch { return false; }
+  try { const r = await fetchN(`${local.url.replace(/\/+$/, '')}/health`, { signal: SenalN.timeout(espera) }); return r.ok; } catch { return false; }
 }
 const NOMBRE_IDIOMA = { en: 'English', es: 'Spanish', pt: 'Portuguese (Brazil)', fr: 'French', de: 'German', it: 'Italian' };
 
@@ -99,7 +100,7 @@ function aOpenAI(historia, sistema) {
 
 // ── una llamada a un proveedor ──────────────────────────────────────────
 async function pedir(url, headers, cuerpo, espera = 90000) {
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(cuerpo), signal: AbortSignal.timeout(espera) });
+  const r = await fetchN(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(cuerpo), signal: SenalN.timeout(espera) });
   const t = await r.text();
   let j = null; try { j = JSON.parse(t); } catch { /* */ }
   if (!r.ok) { const e = new Error((j && (j.error?.message || j.error?.type)) || `HTTP ${r.status}`); e.status = r.status; e.detalles = j && j.error && j.error.details ? JSON.stringify(j.error.details).slice(0, 3000) : ''; throw e; }
@@ -294,7 +295,7 @@ async function voz(texto, cod, motor = 'auto') {
   if ((motor === 'auto' || motor === 'openai') && k.openai) {
     for (const modelo of ['gpt-4o-mini-tts', 'tts-1']) {
       try {
-        const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', signal: AbortSignal.timeout(30000),
+        const r = await fetchN('https://api.openai.com/v1/audio/speech', { method: 'POST', signal: SenalN.timeout(30000),
           headers: { Authorization: `Bearer ${k.openai}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: modelo, voice: 'fable', input: String(texto).slice(0, 1500), response_format: 'mp3',
             ...(modelo !== 'tts-1' ? { instructions: 'Calm, refined, slightly witty British butler AI. Natural pace.' } : {}) }) });

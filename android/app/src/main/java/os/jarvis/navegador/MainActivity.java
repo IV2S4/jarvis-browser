@@ -118,7 +118,9 @@ public class MainActivity extends Activity {
         den = getResources().getDisplayMetrics().density;
         WebView.setWebContentsDebuggingEnabled(false);   // 🔒 nadie puede espiar las páginas por USB
         boveda = new Boveda(this); bloqueo = new Bloqueo(this);
-        cargador = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
+        File publico = new File(getFilesDir(), "publico"); new File(publico, "gestos").mkdirs();   // lo que la interfaz puede leer (el detector de manos)
+        cargador = new WebViewAssetLoader.Builder().addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .addPathHandler("/datos/", new WebViewAssetLoader.InternalStoragePathHandler(this, publico)).build();
         getWindow().setStatusBarColor(Color.TRANSPARENT); getWindow().setNavigationBarColor(Color.TRANSPARENT);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         getWindow().getDecorView().setBackgroundColor(0xFF03080E);
@@ -412,6 +414,23 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ═══════════════════════════ ✋ detector de manos para los gestos (7,5 MB, se baja la primera vez) ═══════════════════════════
+    static final String GESTOS_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+    synchronized Object modeloGestos() {
+        File f = new File(getFilesDir(), "publico/gestos/hand_landmarker.task");
+        if (f.exists() && f.length() > 5_000_000) return resultado(true, null);
+        File tmp = new File(f.getPath() + ".bajando");
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(GESTOS_URL).openConnection(); c.setConnectTimeout(20000); c.setReadTimeout(60000);
+            if (c.getResponseCode() != 200) return resultado(false, "descarga " + c.getResponseCode());
+            try (InputStream in = c.getInputStream(); FileOutputStream o = new FileOutputStream(tmp)) { byte[] b = new byte[65536]; int n; while ((n = in.read(b)) > 0) o.write(b, 0, n); }
+            if (tmp.length() < 5_000_000 || !tmp.renameTo(f)) { tmp.delete(); return resultado(false, "descarga incompleta"); }
+            return resultado(true, null);
+        } catch (Exception e) { tmp.delete(); return resultado(false, "sin internet"); }
+        finally { if (c != null) c.disconnect(); }
+    }
+
     // ═══════════════════════════ 💾 respaldo de ajustes ═══════════════════════════
     JSONObject resultado(boolean ok, String error) { try { JSONObject r = new JSONObject().put("ok", ok); if (error != null) r.put("error", error); return r; } catch (Exception e) { return new JSONObject(); } }
     void pedirRespaldo(JSONObject d, boolean crear) {
@@ -493,7 +512,7 @@ public class MainActivity extends Activity {
             JSONObject d; try { d = new JSONObject(datos == null || datos.isEmpty() ? "{}" : datos); } catch (Exception e) { d = new JSONObject(); }
             try { d.put("_id", id); } catch (Exception ignored) { }
             final JSONObject dd = d;
-            if (accion.equals("fetch") || accion.equals("dns") || accion.equals("guardar") || accion.equals("cargar") || accion.equals("monitor")) hilos.execute(() -> responder(id, hacer(accion, dd)));
+            if (accion.equals("fetch") || accion.equals("dns") || accion.equals("guardar") || accion.equals("cargar") || accion.equals("monitor") || accion.equals("gestos-modelo")) hilos.execute(() -> responder(id, hacer(accion, dd)));
             else ui.post(() -> { Object r = hacer(accion, dd); if (r != ASINCRONO) responder(id, r); });
         }
     }
@@ -589,6 +608,7 @@ public class MainActivity extends Activity {
                     if (tiene(q)) return true; requestPermissions(new String[]{q}, PIDE_PERMISO); return false;
                 }
                 case "monitor": return monitor();
+                case "gestos-modelo": return modeloGestos();
                 case "escaneo": return p == null ? JSONObject.NULL : escaneo(p);
                 case "oculto": { leerOculto(d, d.optString("_id")); return ASINCRONO; }
                 case "insertar": if (p != null) { p.w.requestFocus(); p.w.evaluateJavascript("document.execCommand('insertText',false," + JSONObject.quote(d.optString("texto")) + ")", null); } return true;

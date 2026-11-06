@@ -185,6 +185,7 @@ const MENU = () => [
   ['📱', T('Al teléfono (Telegram)', 'Send (Telegram)'), () => window.enviarTelefono && enviarTelefono()],
   ['▣', T('Video flotante', 'Floating video'), () => H('pip')],
   ['⌨', T('Terminal', 'Terminal'), () => window.abrirTerminal && abrirTerminal()],
+  ['✋', window.gestosActivos && gestosActivos() ? T('Apagar gestos', 'Gestures off') : T('Control con gestos', 'Gesture control'), () => window.alternarGestos && alternarGestos()],
   ['🛡', T('Escáner', 'Scanner'), () => abrirPanel('escaner')],
   ['🎨', T('Tema', 'Theme'), () => window.abrirAjustes && abrirAjustes('general')],
   ['⚙', T('Ajustes', 'Settings'), () => window.abrirAjustes && abrirAjustes()],
