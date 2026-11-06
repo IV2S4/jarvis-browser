@@ -216,7 +216,14 @@ Pulsa 🎙 en el chat (o en la PC, si activaste la voz siempre activa, di "Jarvi
 
 Actívalo en Configuración → Cyber HUD y después **pulsa la mano ✋ de la barra de abajo** cada vez que quieras usarlo: la cámara nunca se enciende sola. Usa la cámara de la PC (o la de tu celular conectado como cámara web). **Todo se procesa dentro de tu PC: ninguna imagen sale de ella.**
 
-En **Android** funciona igual con la cámara de adelante del teléfono: ☰ › **Control con gestos** (la primera vez baja el detector de manos, 7,5 MB).
+En **Android** funciona igual con la cámara de adelante del teléfono:
+
+1. Toca ☰ › **Control con gestos**. La primera vez te pide permiso para la cámara y baja el detector de manos (7,5 MB).
+2. Pon la mano a unos 30–50 cm de la cámara de adelante, con la palma hacia ella y buena luz.
+3. El chip ✋ de la barra de abajo se pone **verde** y muestra la forma que ve (✋ ☝ ✌ ✊ 👍 🤏) cuando reconoce tu mano.
+4. Para apagarlo, toca el chip ✋ o vuelve a ☰ › Control con gestos. Si sales de la app, la cámara se apaga sola.
+
+Consejo: empieza con ✌ y ☝ (bajar y subir), que son los más fáciles; para cambiar de pestaña necesitas tener al menos dos abiertas.
 
 | Gesto | Acción |
 |---|---|

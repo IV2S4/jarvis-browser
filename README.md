@@ -216,7 +216,14 @@ Tap 🎙 in the chat (or on PC, with always-on voice enabled, just say "Jarvis�
 
 Turn it on in Settings → Cyber HUD, then **click the hand ✋ in the bottom bar** whenever you want to use it: the camera never turns on by itself. It uses your PC's camera (or your phone connected as a webcam). **Everything is processed on your PC; no image ever leaves it.**
 
-On **Android** it works the same with the phone's front camera: ☰ › **Gesture control** (the first time it downloads the hand detector, 7.5 MB).
+On **Android** it works the same with the phone's front camera:
+
+1. Tap ☰ › **Gesture control**. The first time it asks for camera permission and downloads the hand detector (7.5 MB).
+2. Hold your hand about 30–50 cm (1–1.5 ft) from the front camera, palm facing it, in good light.
+3. The ✋ chip in the bottom bar turns **green** and shows the shape it sees (✋ ☝ ✌ ✊ 👍 🤏) when it recognizes your hand.
+4. To turn it off, tap the ✋ chip or go back to ☰ › Gesture control. Leaving the app turns the camera off automatically.
+
+Tip: start with ✌ and ☝ (scroll down and up), they're the easiest; switching tabs needs at least two open tabs.
 
 | Gesture | Action |
 |---|---|

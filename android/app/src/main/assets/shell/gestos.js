@@ -31,8 +31,10 @@ async function gCargar() {
   const archivos = await vision.FilesetResolver.forVisionTasks(BASE_GESTOS + 'assets/gestos/wasm');
   const opciones = (delegate) => ({ baseOptions: { modelAssetPath: BASE_GESTOS + 'datos/gestos/hand_landmarker.task', delegate }, runningMode: 'VIDEO', numHands: 1,
     minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.5 });
-  try { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('GPU')); }
-  catch { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('CPU')); }
+  // en el WebView de Android el modo GPU falla a menudo sin avisar (cada cuadro da error): CPU es lo seguro [05-nov]
+  G.vision = vision; G.archivos = archivos; G.opciones = opciones;
+  try { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('CPU')); G.modo = 'CPU'; }
+  catch { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('GPU')); G.modo = 'GPU'; }
   return G.detector;
 }
 
@@ -50,7 +52,7 @@ async function gEncender() {
     G.video = document.createElement('video'); G.video.muted = true; G.video.playsInline = true; G.video.srcObject = G.stream;
     await G.video.play();
     G.activo = true; gChip('✋', 'listo'); toast(T('Gestos encendidos: muéstrale tu mano a la cámara de adelante', 'Gestures on: show your hand to the front camera'), 3500);
-    G.reloj = setInterval(gCuadro, 70);
+    G.errores = 0; G.vistoMano = 0; G.reloj = setInterval(gCuadro, 90);
   } catch (e) {
     gApagar(); toast('✋ ' + (e && e.name === 'NotAllowedError' ? T('La cámara está bloqueada', 'Camera is blocked') : String((e && e.message) || e)), 4000);
   } finally { G.cargando = false; }
@@ -104,11 +106,22 @@ function gHacer(accion) {
 function gCuadro() {
   if (!G.activo || !G.video || G.video.readyState < 2) return;
   const ahora = performance.now();
-  let res = null; try { res = G.detector.detectForVideo(G.video, ahora); } catch { return; }
+  let res = null;
+  try { res = G.detector.detectForVideo(G.video, ahora); G.errores = 0; }
+  catch (e) {   // si el detector falla seguido, se rehace con el otro modo (y si tampoco, se avisa)
+    if (++G.errores === 8) {
+      const otro = G.modo === 'CPU' ? 'GPU' : 'CPU';
+      G.vision.HandLandmarker.createFromOptions(G.archivos, G.opciones(otro)).then((d) => { G.detector = d; G.modo = otro; G.errores = 0; })
+        .catch(() => { gChip('✋ ERROR', 'error'); toast('✋ ' + T('El detector de manos no funciona en este teléfono: ', 'Hand detector failed on this phone: ') + String((e && e.message) || e).slice(0, 120), 6000); });
+    }
+    return;
+  }
   const lm = res && res.landmarks && res.landmarks[0];
   gDibujar(lm);
-  if (!lm) { G.pose = ''; G.rastro = []; return; }
+  if (!lm) { G.pose = ''; G.rastro = []; if (G.vistoMano && ahora - G.vistoMano > 800 && $('gestos-chip').className === 'mano') gChip('✋', 'listo'); return; }
   const p = forma(lm);
+  G.vistoMano = ahora;
+  if ($('gestos-chip').className !== 'accion') gChip(({ palma: '✋', indice: '☝', victoria: '✌', puno: '✊', pulgar: '👍', pinza: '🤏' })[p] || '🖐', 'mano');   // así ves que te reconoce la mano
   if (p !== G.pose) { G.pose = p; G.poseDesde = ahora; G.repetir = 0; G.pinzaY = lm[9].y; }
   const quieto = ahora - G.poseDesde;
   // la cámara de adelante no viene en espejo: tu mano hacia tu derecha va hacia x más pequeño

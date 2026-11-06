@@ -202,3 +202,5 @@ body.teclado .hoja.grande { height: calc(100vh - var(--ime) - var(--sat) - 20px)
 #gestos-chip.accion b { color: #fff; text-shadow: 0 0 8px rgb(var(--c1)); }
 #gestos-chip.cargando { animation: gparpadeo 1s ease-in-out infinite; }
 @keyframes gparpadeo { 50% { opacity: .4; } }
+#gestos-chip.mano { border-color: #3cff8c; box-shadow: 0 0 8px rgba(60, 255, 140, .6); }
+#gestos-chip.error b { color: #ff5c7a; }
