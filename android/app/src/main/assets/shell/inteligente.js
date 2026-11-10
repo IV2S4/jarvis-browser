@@ -396,6 +396,33 @@ nav.en('vivo-herramienta', async (x) => {   // JARVIS usa una herramienta mientr
 document.addEventListener('visibilitychange', () => { if (document.hidden && VV.on) vivoApagar(); });   // sales de la app: se corta
 
 // ═══════════ 🕵 investigador en segundo plano [09-nov] ═══════════
+// 🌐 plan B sin la búsqueda de Gemini (cuando se acaba su cuota) [09-nov]: busca en DuckDuckGo y lee las 3 primeras páginas
+const sinHtml = (h) => String(h || '').replace(/<(script|style|noscript|svg|nav|footer|header)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&#?[a-z0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+async function traerWeb(url) {
+  const r = await Nativo.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Mobile Safari/537.36', 'Accept-Language': 'en-US,en;q=0.9' }, timeout: 15000 });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return (await r.text()).slice(0, 800000);
+}
+async function buscarEnWeb(q) {
+  const html = await traerWeb('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q));
+  const res = [];
+  for (const m of html.matchAll(/class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)) {
+    let u = m[1].replace(/&amp;/g, '&'); const g = /[?&]uddg=([^&]+)/.exec(u); if (g) u = decodeURIComponent(g[1]); if (u.startsWith('//')) u = 'https:' + u;
+    if (!/^https?:/.test(u) || /duckduckgo\.com\/y\.js|bing\.com\/aclick/.test(u) || res.some((x) => x.url === u)) continue;
+    res.push({ titulo: sinHtml(m[2]).slice(0, 120), url: u, texto: sinHtml(m[3]).slice(0, 400) });
+    if (res.length >= 8) break;
+  }
+  if (!res.length) throw new Error('no web results');
+  const paginas = [];
+  for (const r of res.slice(0, 5)) {   // las 3 primeras que se dejen leer
+    if (paginas.length >= 3) break;
+    try { const t = sinHtml(await traerWeb(r.url)); if (t.length > 400 && !/just a moment|access denied|verify you are human|enable javascript/i.test(t.slice(0, 300))) paginas.push(`### ${r.titulo} (${r.url})\n${t.slice(0, 3500)}`); } catch { /* esa no */ }
+  }
+  return { texto: res.map((r) => `- ${r.titulo}: ${r.texto} (${r.url})`).join('\n') + '\n\n' + paginas.join('\n\n'), fuentes: res.map(({ titulo, url }) => ({ titulo, url })) };
+}
+// escribir (sin buscar) con cualquier IA que tengas; si falla, con Gemini + búsqueda
+async function escribirIA(texto, max) { try { return await Cerebro.pensar({ sistema: 'You are a careful research assistant.', historia: [{ rol: 'user', texto }], max }); } catch (e) { return Cerebro.buscarWeb(texto, max); } }
 let investigando = 0;
 function investigarFondo(tema) {
   if (cfg.investigador === false) return { ok: false, error: 'The background researcher is turned off in Settings.' };
@@ -405,17 +432,17 @@ function investigarFondo(tema) {
   (async () => {
     try {
       const hoy = `Today is ${new Date().toDateString()}.`;
-      const plan = await Cerebro.buscarWeb(`${hoy} I must research this for a user: "${tema}". Write 4 to 6 specific web-search questions (one per line, no numbering, no extra text) that together cover it well (current options/prices/specs, comparisons, pros and cons, expert reviews).`, 600);
+      const plan = await escribirIA(`${hoy} I must research this for a user: "${tema}". Write 4 to 6 specific web-search questions (one per line, no numbering, no extra text) that together cover it well (current options/prices/specs, comparisons, pros and cons, expert reviews).`, 600);
       const preguntas = plan.texto.split('\n').map((x) => x.replace(/^[-*\d.)\s]+/, '').trim()).filter((x) => x.length > 8).slice(0, 6);
-      const notas = []; const fuentes = new Map();
+      const notas = []; const fuentes = new Map(); let sinCuota = false;
       for (let k = 0; k < preguntas.length; k++) {
         m.textContent = T(`🕵 Investigando «${tema}» · buscando ${k + 1}/${preguntas.length}…`, `🕵 Researching "${tema}" · searching ${k + 1}/${preguntas.length}…`);
         if (k) await pausa(2500);
-        try { const r = await Cerebro.buscarWeb(`${hoy} Search the web: ${preguntas[k]}\nAnswer with concrete, current facts (names, prices, specs, dates) in bullet points, and put the source page URL in parentheses after each fact.`, 1500); notas.push(`## ${preguntas[k]}\n${r.texto}`); for (const f of r.fuentes) if (fuentes.size < 20) fuentes.set(f.url, f); } catch { /* */ }
+        try { let r = null; if (!sinCuota) { try { r = await Cerebro.buscarWeb(`${hoy} Search the web: ${preguntas[k]}\nAnswer with concrete, current facts (names, prices, specs, dates) in bullet points, and put the source page URL in parentheses after each fact.`, 1500); } catch { sinCuota = true; } } if (!r) r = await buscarEnWeb(preguntas[k]); notas.push(`## ${preguntas[k]}\n${r.texto}`); for (const f of r.fuentes) if (fuentes.size < 20) fuentes.set(f.url, f); } catch { /* */ }
       }
-      if (!notas.length) throw new Error(T('No pude buscar en internet (¿cuota de Gemini?).', "Couldn't search the web (Gemini quota?)."));
+      if (!notas.length) throw new Error(T('No pude buscar en internet.', "Couldn't search the web."));
       m.textContent = T(`🕵 Investigando «${tema}» · escribiendo el informe…`, `🕵 Researching "${tema}" · writing the report…`);
-      const final = await Cerebro.buscarWeb(`${hoy} Using ONLY these research notes, write a clear report in ${Cerebro.idiomaDe(IDIOMA)} about: "${tema}". Start with a 2-sentence summary; then a markdown comparison table of the main options (price, key specs, pros, cons…); then "My recommendation". Markdown only, no preamble.\nNOTES:\n${notas.join('\n\n').slice(0, 50000)}`, 4000);
+      const final = await escribirIA(`${hoy} Using ONLY these research notes, write a clear report in ${Cerebro.idiomaDe(IDIOMA)} about: "${tema}". Start with a 2-sentence summary; then a markdown comparison table of the main options (price, key specs, pros, cons…); then "My recommendation". Markdown only, no preamble.\nNOTES:\n${notas.join('\n\n').slice(0, 50000)}`, 4000);
       m.className = 'msg j'; m.innerHTML = md(`🕵 **${tema}**\n\n${final.texto}\n\n**${T('Fuentes', 'Sources')}:**\n${[...fuentes.values()].map((f) => `- [${f.titulo}](${f.url})`).join('\n')}`);
       H('notificar', { titulo: '🕵 JARVIS', texto: T(`Tu informe está listo: ${tema}`, `Your report is ready: ${tema}`) }); hablar(T(`Señor, su informe sobre ${tema} está listo.`, `Sir, your report on ${tema} is ready.`));
     } catch (e) { m.textContent = '🕵 ' + T('No pude terminar la investigación: ', "Couldn't finish the research: ") + String(e.message || e); }

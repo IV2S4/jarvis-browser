@@ -1581,16 +1581,26 @@ const recuerdos = require('./lib/recuerdos');   // 🧠 memoria del navegador [0
 const investigador = require('./lib/investigador');   // 🕵 investigador en segundo plano [09-nov]
 const continuar = require('./lib/continuar');         // 🔄 continuar en el otro dispositivo [09-nov]
 const NOMBRE_EN = { es: 'Spanish', en: 'English', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian' };
+// 🌐 lee una página en una ventana escondida (como un navegador de verdad, para las webs que bloquean a los robots) [09-nov]
+async function leerPaginaEscondida(url) {
+  const v = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { partition: 'persist:jarvis', javascript: true, images: false, sandbox: true, contextIsolation: true } });
+  try {
+    v.webContents.setAudioMuted(true);
+    await Promise.race([v.loadURL(url).catch(() => {}), pausa(15000)]);
+    await pausa(1500);
+    return await Promise.race([v.webContents.executeJavaScript('document.body ? document.body.innerText : ""', true), pausa(5000).then(() => '')]);
+  } finally { try { v.destroy(); } catch { /* */ } }
+}
 let investigando = 0;
 async function investigarFondo(tema) {
   const llave = cerebro.llave('gemini');
-  if (!llave) return { ok: false, error: T2('El investigador necesita tu llave de Gemini (Configuración › Cerebro).', 'The researcher needs your Gemini key (Settings › Brain).') };
+  if (!llave && !cerebro.hayAlguna()) return { ok: false, error: T2('El investigador necesita una llave de IA (Configuración › Cerebro).', 'The researcher needs an AI key (Settings › Brain).') };
   if (investigando >= 2) return { ok: false, error: T2('Ya hay 2 investigaciones en marcha; espera a que termine una.', 'There are already 2 research jobs running; wait for one to finish.') };
   investigando++;
   aviso('investigacion', { estado: 'empezando', tema });
   (async () => {
     try {
-      const r = await investigador.investigar({ llave, tema, idioma: codIdioma(cfg), nombreIdioma: NOMBRE_EN[codIdioma(cfg)] || 'English', carpeta: path.join(CONF, 'informes'),
+      const r = await investigador.investigar({ llave, pensar: cerebro.pensar, leerPagina: leerPaginaEscondida, tema, idioma: codIdioma(cfg), nombreIdioma: NOMBRE_EN[codIdioma(cfg)] || 'English', carpeta: path.join(CONF, 'informes'),
         progreso: (paso) => aviso('investigacion', { estado: 'trabajando', tema, paso }) });
       nueva(require('url').pathToFileURL(r.archivo).href, false);
       aviso('investigacion', { estado: 'listo', tema, resumen: r.resumen, fuentes: r.fuentes });

@@ -30,6 +30,34 @@ async function buscar(llave, texto, max = 2500, intento = 0) {
   throw ultimo || new Error('sin respuesta');
 }
 
+// 🌐 plan B sin la búsqueda de Gemini (cuando se acaba su cuota) [09-nov]: busca en DuckDuckGo y lee las 3 primeras páginas
+const UA_WEB = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
+const sinHtml = (h) => String(h || '').replace(/<(script|style|noscript|svg|nav|footer|header)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&#?[a-z0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+async function traerWeb(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': UA_WEB, 'Accept-Language': 'en-US,en;q=0.9' }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return (await r.text()).slice(0, 800000);
+}
+// leer(url) → texto de la página; en la PC lo da una ventana escondida de Chromium (muchas webs bloquean a fetch)
+async function buscarEnWeb(q, leer = async (u) => sinHtml(await traerWeb(u))) {
+  const html = await traerWeb('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q));
+  const res = [];
+  for (const m of html.matchAll(/class="result__a" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g)) {
+    let u = m[1].replace(/&amp;/g, '&'); const g = /[?&]uddg=([^&]+)/.exec(u); if (g) u = decodeURIComponent(g[1]); if (u.startsWith('//')) u = 'https:' + u;
+    if (!/^https?:/.test(u) || /duckduckgo\.com\/y\.js|bing\.com\/aclick/.test(u) || res.some((x) => x.url === u)) continue;   // sin anuncios ni repetidos
+    res.push({ titulo: sinHtml(m[2]).slice(0, 120), url: u, texto: sinHtml(m[3]).slice(0, 400) });
+    if (res.length >= 8) break;
+  }
+  if (!res.length) throw new Error('no web results');
+  const paginas = [];
+  for (const r of res.slice(0, 5)) {   // las 3 primeras que se dejen leer
+    if (paginas.length >= 3) break;
+    try { const t = String(await leer(r.url) || '').replace(/\s+/g, ' ').trim(); if (t.length > 400 && !/just a moment|access denied|verify you are human|enable javascript/i.test(t.slice(0, 300))) paginas.push(`### ${r.titulo} (${r.url})\n${t.slice(0, 3500)}`); } catch { /* esa no */ }
+  }
+  return { texto: res.map((r) => `- ${r.titulo}: ${r.texto} (${r.url})`).join('\n') + '\n\n' + paginas.join('\n\n'), fuentes: res.map(({ titulo, url }) => ({ titulo, url })) };
+}
+
 // markdown sencillo → HTML (títulos, listas, tablas, negritas, enlaces)
 function aHtml(md) {
   const enl = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank">$1</a>');
@@ -69,22 +97,26 @@ ${fuentes.length ? `<div class="fuentes"><b>${es ? 'Fuentes' : 'Sources'}</b><ol
 async function investigar(o) {
   const { llave, tema } = o;
   o.progreso && o.progreso('plan');
+  // escribir (sin buscar): con cualquier IA que tengas (pensar rota proveedores); si no hay, con Gemini + búsqueda
+  const escribir = async (texto, max) => { if (o.pensar) { try { return await o.pensar({ sistema: 'You are a careful research assistant.', historia: [{ rol: 'user', texto }], max }); } catch (e) { if (!llave) throw e; } } return buscar(llave, texto, max); };
   const hoy = `Today is ${new Date().toDateString()}.`;
-  const plan = await buscar(llave, `${hoy} I must research this for a user: "${tema}". Write 4 to 6 specific web-search questions (one per line, no numbering, no extra text) that together cover it well (current options/prices/specs, comparisons, pros and cons, expert reviews).`, 600);
+  const plan = await escribir(`${hoy} I must research this for a user: "${tema}". Write 4 to 6 specific web-search questions (one per line, no numbering, no extra text) that together cover it well (current options/prices/specs, comparisons, pros and cons, expert reviews).`, 600);
   const preguntas = plan.texto.split('\n').map((x) => x.replace(/^[-*\d.)\s]+/, '').trim()).filter((x) => x.length > 8).slice(0, 6);
-  const hallazgos = []; const fuentes = new Map();
+  const hallazgos = []; const fuentes = new Map(); let sinCuota = false;
   for (let k = 0; k < preguntas.length; k++) {
     o.progreso && o.progreso(`${k + 1}/${preguntas.length}: ${preguntas[k]}`);
     try {
       if (k) await new Promise((ok) => setTimeout(ok, 2500));   // sin prisa: el plan gratis de Gemini limita las búsquedas por minuto
-      const r = await buscar(llave, `${hoy} Search the web: ${preguntas[k]}\nAnswer with concrete, current facts (names, prices, specs, dates) in bullet points, and put the source page URL in parentheses after each fact.`, 1500);
+      let r = null;
+      if (llave && !sinCuota) { try { r = await buscar(llave, `${hoy} Search the web: ${preguntas[k]}\nAnswer with concrete, current facts (names, prices, specs, dates) in bullet points, and put the source page URL in parentheses after each fact.`, 1500); } catch { sinCuota = true; } }
+      if (!r) r = await buscarEnWeb(preguntas[k], o.leerPagina);   // sin cuota de Gemini: DuckDuckGo + las páginas
       hallazgos.push(`## ${preguntas[k]}\n${r.texto}`);
       for (const f of r.fuentes) if (!fuentes.has(f.url) && fuentes.size < 25) fuentes.set(f.url, f);
     } catch { /* esa pregunta falló: seguimos con las demás */ }
   }
-  if (!hallazgos.length) throw new Error('No pude buscar en internet (¿cuota de Gemini?).');
+  if (!hallazgos.length) throw new Error('No pude buscar en internet.');
   o.progreso && o.progreso('informe');
-  const final = await buscar(llave, `${hoy} Using ONLY these research notes, write a clear report in ${o.nombreIdioma} for the user about: "${tema}".
+  const final = await escribir(`${hoy} Using ONLY these research notes, write a clear report in ${o.nombreIdioma} for the user about: "${tema}".
 Structure: a 2–3 sentence summary first; then a markdown comparison table of the main options (with the most useful columns: price, key specs, pros, cons…); then a short "My recommendation" section saying which to choose and why; then any warnings. Use markdown (## headings, | tables |, - bullets). No preamble.
 NOTES:
 ${hallazgos.join('\n\n').slice(0, 60000)}`, 4000);
@@ -95,4 +127,4 @@ ${hallazgos.join('\n\n').slice(0, 60000)}`, 4000);
   const resumen = final.texto.split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#') && !x.startsWith('|')).slice(0, 2).join(' ').slice(0, 400);
   return { id, archivo, resumen, fuentes: fuentes.size, markdown: final.texto };
 }
-module.exports = { investigar, aHtml };
+module.exports = { investigar, aHtml, buscarEnWeb };

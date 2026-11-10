@@ -478,7 +478,7 @@ Only the SAME product (same model, size, capacity, condition new). Reply ONLY wi
 async function ofertasDeResultados(p, enlaces) {   // 💰 plan B sin la búsqueda de Gemini (cuota) [09-nov]
   const r = await pensar({ sistema: 'You extract shopping offers from web search results. Never invent prices or links.', historia: [{ rol: 'user', texto:
 `Product: ${p.nombre}
-From these search results (each has i, web, url and the visible text), pick up to 6 STORES that sell exactly this product and whose text shows its price.
+From these search results (each has i, web, url and the visible text), pick up to 6 STORES that sell exactly this product and whose text shows its price. Only real shops: skip price trackers and comparison sites (camelcamelcamel, Keepa, PriceSpy, Google Shopping...), reviews and forums, and skip bundles, used or refurbished units.
 Reply ONLY with JSON: {"ofertas":[{"i":0,"tienda":"Walmart","precio":12.34,"moneda":"USD"}]} using the i of the result. {"ofertas":[]} if none.
 RESULTS:
 ${JSON.stringify(enlaces.map(({ i, web, url, texto }) => ({ i, web, url: url.slice(0, 160), texto })))}` }], max: 800 });
