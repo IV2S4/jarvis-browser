@@ -76,7 +76,14 @@ const PREDETERMINADA = {
   lanzarTelefono: true,           // [09-nov] ✊ agarrar la página y 🖐 lanzarla → te llega al teléfono
   memoriaNavegador: true,         // [09-nov] guarda un pedacito del texto de cada página (solo en esta PC) para encontrarla después
   doblajeEnVivo: true,            // [09-nov] «Jarvis, dobla este video»: lee en voz alta los subtítulos traducidos
-  buscaLoQueVes: true,            // [09-nov] «Jarvis, ¿qué es esto?» enseñándole algo a la cámara           // [09-nov] con la cámara encendida: si otra persona mira tu pantalla, la página se tapa
+  buscaLoQueVes: true,
+  conversacionVivo: true,         // [09-nov] 🗣 hablar con JARVIS como en una llamada (Gemini Live)
+  detectorEstafas: true,          // [09-nov] 🛡 avisa si una tienda parece estafa (edad del dominio + IA)
+  preguntaVideo: true,            // [09-nov] 🎬 preguntas sobre un video de YouTube con minutos que saltan al momento
+  comparadorPrecios: true,
+  investigador: true,             // [09-nov] 🕵 «Jarvis, investiga…»: busca en internet en segundo plano y abre un informe con tabla y fuentes
+  continuarDispositivo: true,     // [09-nov] 🔄 la PC y el teléfono se pasan lo que estás viendo por el WiFi (emparejados con código)
+  continuarTokens: [],            // teléfonos emparejados (llave secreta de cada uno)        // [09-nov] 💰 busca el mismo producto más barato en otras tiendas            // [09-nov] «Jarvis, ¿qué es esto?» enseñándole algo a la cámara           // [09-nov] con la cámara encendida: si otra persona mira tu pantalla, la página se tapa
   carpetaClips: '',               // vacío = buscar en Vídeos              // escuchar «Jarvis…» sin tocar el micrófono (se enciende en Configuración)               // al abrir un juego: pestañas de fondo dormidas y prioridad baja [04-nov]
   permisos: {},                   // { "sitio.com": { media: true, geolocation: false } }
   emergentesPermitidas: {},       // { "sitio.com": true }

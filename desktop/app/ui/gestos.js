@@ -8,6 +8,7 @@
 //   👍 pulgar arriba (1 s)          → llama a JARVIS (micrófono)
 //   ✊ puño cerrado (1,5 s)          → cierra la pestaña
 //   🤏 pellizco (pulgar + índice) y sube / baja la mano → zoom más / menos
+//   4 dedos arriba, pulgar doblado sobre la palma (1 s) → manda la página al teléfono
 const G = { activo: false, cargando: false, stream: null, video: null, detector: null, camara: null, reloj: 0,
   pose: '', poseDesde: 0, rastro: [], enfriar: 0, repetir: 0, chipT: 0, error: '', pinzaY: 0 };
 
@@ -100,6 +101,10 @@ function forma(lm) {
   if (dist(lm[4], lm[8]) < tam * 0.25 && dist(lm[8], lm[0]) > dist(lm[5], lm[0]) * 1.05) return 'pinza';
   const pulgar = lm[4].y < lm[3].y && lm[3].y < lm[2].y && (lm[5].y - lm[4].y) > tam * 0.45;
   if (pulgar && !i && !m && !r && !p) return 'pulgar';
+  // 4 dedos arriba con el pulgar doblado sobre la palma → mandar al teléfono [09-nov]
+  // (con el pulgar afuera sigue siendo ✋ palma = pausa)
+  const pulgarDentro = Math.min(dist(lm[4], lm[9]), dist(lm[4], lm[13]), dist(lm[4], lm[17])) < tam * 0.55 && dist(lm[4], lm[5]) < tam * 0.7;
+  if (i && m && r && p && pulgarDentro) return 'telefono';
   if (i && m && r && p) return 'palma';
   if (i && m && !r && !p) return 'victoria';
   if (i && !m && !r && !p) return 'indice';
@@ -115,18 +120,22 @@ function gCuadro() {
   const lm = res && res.landmarks && res.landmarks[0];
   gVigilar(Boolean(lm), ahora);
   if (E.gestosVista) gDibujar(lm);
-  if (!lm) { G.pose = ''; G.rastro = []; return; }
+  if (!lm) { G.pose = ''; G.rastro = []; G.tel = []; if ($('gestos-txt').textContent.startsWith('📲 •')) gChipListo(); return; }
   const p = forma(lm);
   if (p !== G.pose) { G.pose = p; G.poseDesde = ahora; G.repetir = 0; G.pinzaY = lm[9].y; }
   const quieto = ahora - G.poseDesde;
   // deslizar la mano de lado (la imagen viene en espejo: la mano a tu derecha va hacia x más pequeño)
   G.rastro.push({ x: lm[9].x, y: lm[9].y, t: ahora }); G.rastro = G.rastro.filter((r) => ahora - r.t < 450);
   if (ahora < G.enfriar) return;
-  // 📲 lanzar al teléfono [09-nov]: ✊ agarras la página y la lanzas de lado abriendo la mano 🖐
-  if (p === 'puno' && quieto > 250) G.agarre = { t: ahora, x: lm[9].x };
-  if (E.lanzarTelefono && G.agarre && ['palma', 'otra'].includes(p) && ahora - G.agarre.t < 900 && Math.abs(lm[9].x - G.agarre.x) > 0.18) {
-    G.agarre = null; G.enfriar = ahora + 2500; G.rastro = []; G.poseDesde = ahora;
-    gFeedback('📲', 'LANZANDO…', 'THROWING…');
+  // 📲 mandar al teléfono [09-nov]: 4 dedos con el pulgar doblado, ~1 s
+  // tolerante: basta con que la cámara lo vea la mayor parte del tiempo (aunque parpadee o vaya lenta)
+  G.tel = (G.tel || []).filter((x) => ahora - x.t < 1100); G.tel.push({ t: ahora, si: p === 'telefono' });
+  const vistos = G.tel.filter((x) => x.si).length; const parte = vistos / G.tel.length;
+  if (E.lanzarTelefono && vistos >= 3 && parte > 0.3 && $('gestos-chip').className !== 'accion') gChip('📲 ' + '•'.repeat(Math.min(5, Math.round(parte * 5))), 'listo');
+  else if (parte <= 0.3 && $('gestos-txt').textContent.startsWith('📲 •')) gChipListo();
+  if (E.lanzarTelefono && vistos >= 3 && ahora - G.tel[0].t > 800 && parte >= 0.5) {
+    G.tel = []; G.enfriar = ahora + 3000; G.rastro = []; G.poseDesde = ahora;
+    gFeedback('📲', 'ENVIANDO AL TELÉFONO…', 'SENDING TO PHONE…');
     H('gesto', 'lanzar').then((r) => {
       if (r && r.ok) gFeedback('📲', '¡EN TU TELÉFONO!', 'SENT TO YOUR PHONE!');
       else gFeedback('⚠', r && r.configurar ? 'CONECTA EL TELÉFONO EN CONFIGURACIÓN' : 'NO SE PUDO ENVIAR', r && r.configurar ? 'CONNECT YOUR PHONE IN SETTINGS' : "COULDN'T SEND");

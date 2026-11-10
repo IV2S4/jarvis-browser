@@ -3,7 +3,9 @@
 const INICIO = 'https://appassets.androidplatform.net/assets/inicio/index.html';
 const PRED = { idioma: 'en', buscador: 'google', tema: 'cian', guardarHistorial: true, bloquear: true, monitor: true, pipAuto: true, vozRespuestas: false, vozMotor: 'sistema',
   ordenIA: ['gemini', 'claude', 'openai'], memoriaJarvis: true, escaner: true, sonidos: true, efectos: true, telegramChat: null, telegramBot: null, qwenPC: '', localActivo: false, vigilar: true,
-  camaraPausa: true, camaraGuardian: true, memoriaNavegador: true, doblajeEnVivo: true, buscaLoQueVes: true };   // [09-nov] funciones inteligentes
+  camaraPausa: true, camaraGuardian: true, memoriaNavegador: true, doblajeEnVivo: true, buscaLoQueVes: true,
+  conversacionVivo: true, detectorEstafas: true, preguntaVideo: true, comparadorPrecios: true,
+  investigador: true, continuarDispositivo: true, continuarPC: '', continuarToken: '' };   // [09-nov] entrega 2   // [09-nov] tanda 2   // [09-nov] funciones inteligentes
 let cfg = { ...PRED };
 let E = { pestanas: [], activa: 0, url: '' };
 let favoritos = []; let historial = []; let memoria = [];

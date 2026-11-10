@@ -395,8 +395,8 @@ function mostrarAviso() {
   const a = avisos[0];
   document.body.classList.toggle('infobar', Boolean(a)); $('infobar').hidden = !a; H('barra-aviso', Boolean(a));
   if (!a) return;
-  $('infobar').className = a.tipo === 'emergente' ? 'info' : a.tipo === 'amenaza' ? 'peligro' : '';
-  $('ib-ico').textContent = a.tipo === 'emergente' ? '🧱' : a.tipo === 'amenaza' ? '⚠' : '🔐';
+  $('infobar').className = a.tipo === 'emergente' || a.tipo === 'precio' ? 'info' : a.tipo === 'amenaza' || a.tipo === 'estafa' ? 'peligro' : '';
+  $('ib-ico').textContent = a.tipo === 'emergente' ? '🧱' : a.tipo === 'amenaza' ? '⚠' : a.tipo === 'estafa' ? '🛡' : a.tipo === 'precio' ? '💰' : '🔐';
   $('ib-texto').innerHTML = a.texto;
   $('ib-botones').innerHTML = a.botones.map((b, i) => `<button class="${b.clase || ''}" data-i="${i}">${esc(b.t)}</button>`).join('');
   $('ib-botones').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { a.botones[Number(b.dataset.i)].f(); avisos.shift(); mostrarAviso(); }));
@@ -471,6 +471,39 @@ function pintarPanelEscaner() {
   $('esc-hosts').innerHTML = (r.hosts || []).map((h) => `<div class="h ${h.bloqueado ? 'bloq' : h.propio ? 'propio' : ''}"><span>${esc(h.host)}</span><small>${h.bloqueado ? (h.bloqueado === 'rastreador' ? T('RASTREADOR BLOQUEADO', 'TRACKER BLOCKED') : T('ANUNCIO BLOQUEADO', 'AD BLOCKED')) : h.propio ? T('PROPIO', 'OWN') : `${h.n}×`}</small></div>`).join('');
 }
 window.nav.en('escaner', (r) => { const nuevo = r && (!escaneo || escaneo.url !== r.url); pintarEscudo(r); if (nuevo && E.efectos) sonido('escaneo'); });
+// 🛡 tienda sospechosa [09-nov]
+window.nav.en('estafa', (a) => {
+  sonido('alerta');
+  const alto = a.riesgo === 'alto';
+  avisos.unshift({ tipo: 'estafa', host: a.host, texto: `<b>${esc(a.host)}</b> ${alto ? T('parece una ESTAFA', 'looks like a SCAM') : T('podría ser una estafa', 'might be a scam')}${a.resumen ? ': ' + esc(a.resumen) : ''}<br><small>${(a.motivos || []).map((m) => '• ' + esc(m)).join(' ')}</small>`,
+    botones: [{ t: T('Salir de aquí', 'Get me out'), clase: 'si', f: () => H('atras') }, { t: T('Preguntar a JARVIS', 'Ask JARVIS'), f: () => { H('panel', true); pestPanel('chat'); chatear(T('¿Esta tienda es confiable? Revísala a fondo.', 'Is this store legit? Check it thoroughly.')); } }, { t: T('Seguir igual', 'Continue anyway'), clase: 'no', f: () => {} }] });
+  decirEnCola(T(`Cuidado, señor: ${a.host} ${alto ? 'parece una estafa' : 'podría ser una estafa'}.`, `Careful, sir: ${a.host} ${alto ? 'looks like a scam' : 'might be a scam'}.`));
+  mostrarAviso();
+});
+// 🖼 comparación de precios con foto de cada tienda, en el chat [09-nov]
+window.nav.en('precio-chat', (x) => {
+  const a = x.aqui; const mon = a.moneda === 'USD' ? '$' : ''; const f = (n) => mon + Number(n).toFixed(2) + (mon ? '' : ' ' + a.moneda);
+  const d = document.createElement('div'); d.className = 'msg j precios';
+  const tarjeta = (o, aquiMismo) => {
+    const ahorro = a.precio - o.precio;
+    return `<a class="tarjeta${aquiMismo ? ' aqui' : ahorro > 0.5 ? ' barata' : ''}" ${aquiMismo ? '' : `data-url="${esc(o.url)}"`}>
+      <div class="foto">${o.foto ? `<img src="${esc(o.foto)}" alt="" referrerpolicy="no-referrer" />` : '🛒'}</div>
+      <b>${esc(o.tienda)}</b><span class="pr">${f(o.precio)}</span>
+      <small>${aquiMismo ? T('aquí', 'here') + (a.estado === 'used' ? ' · ' + T('usado', 'used') : '') : ahorro > 0.5 ? T('ahorras', 'save') + ' ' + f(ahorro) : ahorro < -0.5 ? '+' + f(-ahorro) : T('igual', 'same')}</small></a>`;
+  };
+  d.innerHTML = `<div class="cab">💰 ${T('Comparación de precios', 'Price comparison')}<small>${esc(String(a.nombre || '').slice(0, 90))}</small></div>
+    <div class="tarjetas">${tarjeta({ tienda: a.tienda, precio: a.precio, foto: a.foto }, true)}${x.ofertas.map((o) => tarjeta(o, false)).join('')}</div>`;
+  d.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => { im.parentNode.textContent = '🛒'; }));
+  $('charla2').appendChild(d); $('charla2').scrollTop = $('charla2').scrollHeight;
+});
+// 💰 más barato en otra tienda [09-nov]
+window.nav.en('precio', (a) => {
+  const m = a.mejor; const ahorro = (a.precio - m.precio).toFixed(2); const sim = (x) => (a.moneda === 'USD' ? '$' : '') + Number(x).toFixed(2) + (a.moneda === 'USD' ? '' : ' ' + a.moneda);
+  sonido('pestana');
+  avisos.push({ tipo: 'precio', texto: `${T('Más barato en', 'Cheaper at')} <b>${esc(m.tienda)}</b>: ${sim(m.precio)} <small>(${T('aquí', 'here')} ${sim(a.precio)} · ${T('ahorras', 'you save')} ${sim(ahorro)})</small>${a.otras && a.otras.length ? `<br><small>${T('También', 'Also')}: ${a.otras.map((o) => `${esc(o.tienda)} ${sim(o.precio)}`).join(' · ')}</small>` : ''}`,
+    botones: [{ t: T('Abrir en', 'Open at') + ' ' + m.tienda, clase: 'si', f: () => H('nueva', m.url) }, { t: T('Cerrar', 'Close'), clase: 'no', f: () => {} }] });
+  mostrarAviso();
+});
 window.nav.en('amenaza', (a) => {
   sonido('alerta');
   avisos.unshift({ tipo: 'amenaza', host: a.host, texto: `<b>${esc(a.host)}</b> ${T('parece peligrosa', 'looks dangerous')}: ${esc((a.pistas || []).map(pista).join(' ').slice(0, 240))}`,
@@ -677,7 +710,8 @@ async function chatear(q, porVoz = false) {
 function md(texto) {   // markdown sencillo y seguro (tablas, listas, negrita, enlaces)
   const enl = (s) => s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, (_m, t, u) => `<a data-url="${u}">${t}</a>`)
     .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, a, u) => `${a}<a data-url="${u}">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40)}</a>`)
-    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\[(\d{1,2}(?::\d{2}){1,2})\](?!\()/g, (_m, t) => `<a class="ts" data-t="${t.split(':').reduce((s, x) => s * 60 + Number(x), 0)}">⏱ ${t}</a>`);   // 🎬 minutos del video [09-nov]
   const lineas = esc(texto).split('\n'); const out = []; let i = 0;
   while (i < lineas.length) {
     const l = lineas[i].trim();
@@ -700,7 +734,10 @@ const paraVoz = (t) => String(t || '').split('\n').filter((l) => !l.trim().start
   .replace(/<[^>]*>/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/https?:\/\/\S+/g, '').replace(/[*#_`>|]/g, '').replace(/(\.\s*){2,}/g, '. ').replace(/\s+/g, ' ').replace(/^[.\s]+/, '').trim();
 function pasosDe(m) { let ol = m.querySelector('.pasos'); if (!ol) { ol = document.createElement('ol'); ol.className = 'pasos'; m.prepend(ol); } return ol; }
 function cuerpoDe(m) { let c = m.querySelector('.cuerpo'); if (!c) { c = document.createElement('div'); c.className = 'cuerpo'; m.appendChild(c); } return c; }
-$('charla2').addEventListener('click', (e) => { const a = e.target.closest('a[data-url]'); if (a) { e.preventDefault(); H('nueva', a.dataset.url); } });
+$('charla2').addEventListener('click', (e) => {
+  const t = e.target.closest('a[data-t]'); if (t) { e.preventDefault(); H('video-ir', Number(t.dataset.t)); return; }   // ⏱ salta a ese momento del video
+  const a = e.target.closest('a[data-url]'); if (a) { e.preventDefault(); H('nueva', a.dataset.url); }
+});
 function trabajando(on) { $('p-parar').hidden = !on; $('p-enviar').hidden = on; }
 $('p-parar').addEventListener('click', () => {
   H('chat-parar'); callarCola();
@@ -728,6 +765,7 @@ window.nav.en('chat-ev', (ev) => {
   else if (ev.tipo === 'error') { chatResp.classList.remove('pensando'); if (chatResp.firstChild && chatResp.firstChild.nodeType === 3) chatResp.firstChild.remove(); cuerpoDe(chatResp).textContent = ev.texto || 'Algo falló.'; if (ev.llave) revisarJarvis(); }
   if (ev.tipo === 'fin' || ev.tipo === 'apagado' || ev.tipo === 'error') {
     $('panel').classList.remove('pensando');
+    if (chatTexto && ev.tipo === 'fin') cuerpoDe(chatResp).innerHTML = md(chatTexto.replace(/<think>[\s\S]*?<\/think>/g, ''));   // enlaces y minutos tocables también al escribir en vivo [09-nov]
     if (!chatTexto && ev.tipo === 'fin') { chatResp.classList.remove('pensando'); if (chatResp.firstChild && chatResp.firstChild.nodeType === 3) chatResp.firstChild.remove(); chatResp.querySelectorAll('.pasos li.ahora').forEach((x) => x.classList.remove('ahora')); cuerpoDe(chatResp).textContent = 'Listo.'; }
     chatResp = null;
     setTimeout(() => { if (!chatResp) $('vista').hidden = true; }, 4000);

@@ -130,7 +130,7 @@ function estado() {
     actualizacion: nuevaVersion ? nuevaVersion.version : '', version: app.getVersion(),
     terminal: cfg.terminal !== false, mando: mandoAbierto(), tema: cfg.tema || 'cian', dictado: cfg.dictado !== false,
     documento: Boolean(cfg.documentos !== false && p && !p.privada && (p.esPdf || esPdfUrl(urlDe(p)))),
-    gestos: Boolean(cfg.gestos), camaraGestos: cfg.camaraGestos || '', gestosVista: cfg.gestosVista !== false, camaraPausa: cfg.camaraPausa !== false, camaraGuardian: cfg.camaraGuardian !== false, lanzarTelefono: cfg.lanzarTelefono !== false, local: Boolean(cfg.cerebroLocal),
+    gestos: Boolean(cfg.gestos), camaraGestos: cfg.camaraGestos || '', gestosVista: cfg.gestosVista !== false, camaraPausa: cfg.camaraPausa !== false, camaraGuardian: cfg.camaraGuardian !== false, lanzarTelefono: cfg.lanzarTelefono !== false, conversacionVivo: cfg.conversacionVivo !== false, continuar: cfg.continuarDispositivo !== false && (cfg.continuarTokens || []).length > 0, preguntaVideo: cfg.preguntaVideo !== false, local: Boolean(cfg.cerebroLocal),
     favorito: w ? datos.favoritos.some((f) => f.url === w.getURL()) : false, favoritos: datos.favoritos,
   };
 }
@@ -336,6 +336,9 @@ function nueva(url, activar = true, privada = false) {
     }, 3500);
   };
   w.on('did-finish-load', recordar);
+  // 🛡 detector de estafas + 💰 comparador de precios [09-nov]: solo en tiendas, nunca en pestañas privadas
+  w.on('did-finish-load', () => { if (!p.privada) revisarTienda(w); });
+  w.on('did-navigate-in-page', (_e, _u, principal) => { if (principal && !p.privada) revisarTienda(w); });
   w.on('did-navigate-in-page', (_e, _u, principal) => { if (principal) recordar(); });
   w.on('page-title-updated', (_e, t) => { if (!p.privada && cfg.guardarHistorial) proteccion.historial.titulo(w.getURL(), t); });
   w.once('dom-ready', () => { if (cfg.zoom && cfg.zoom !== 100) w.setZoomFactor(cfg.zoom / 100); });
@@ -1009,6 +1012,40 @@ async function herramienta(n, a) {
     case 'summarize_page': return { salida: { ok: true, summary: await resumirActual() } };
     case 'translate_page': { const p = priv(); if (p) return p; traducirPagina(a.language); return { salida: { ok: true, note: 'The page is being translated now.' } }; }
     case 'read_aloud': return { salida: await control('leer-desde', { desde: a.from || '' }) };
+    case 'deep_research': {   // 🕵 [09-nov]
+      if (cfg.investigador === false) return { salida: { ok: false, error: 'The background researcher is turned off in Settings.' } };
+      return { salida: await investigarFondo(String(a.topic || '').slice(0, 300)) };
+    }
+    case 'continue_on_phone': {   // 🔄 [09-nov]
+      if (cfg.continuarDispositivo === false) return { salida: { ok: false, error: 'Continue on the other device is turned off in Settings.' } };
+      if (!(cfg.continuarTokens || []).length) return { salida: { ok: false, error: 'The phone is not paired yet: Settings › Continue on the other device › Pair phone.' } };
+      continuar.mandarAlTelefono(await ahoraEnPC()); return { salida: { ok: true, nota: 'The phone will show it in a few seconds (JARVIS Browser must be open on the phone).' } };
+    }
+    case 'check_scam': {   // 🛡 [09-nov]
+      const t = await revisarTiendaAhora(); if (!t.ok) return { salida: t };
+      const r = await estafas.revisar(t.host, t.d);
+      let ia = null; try { ia = await cerebro.analizarEstafa({ senales: r.senales, titulo: t.d.titulo, url: t.w.getURL(), texto: t.d.texto }, codIdioma(cfg)); } catch { /* */ }
+      return { salida: { ok: true, sitio: t.host, edad_dominio_dias: r.dias, puntos_de_riesgo: r.puntos, senales: r.senales, analisis: ia } };
+    }
+    case 'compare_prices': {   // 💰 [09-nov]
+      const t = await revisarTiendaAhora(); if (!t.ok) return { salida: t };
+      const pr = t.d.producto || (a.product ? { nombre: a.product, precio: 0 } : null);
+      if (!pr) return { salida: { ok: false, error: 'This page does not look like a product page. Ask the user which product.' } };
+      try {
+        const ofertas = await cerebro.compararPrecios({ ...pr, tienda: t.host });
+        anotarPrecio({ url: t.w.getURL(), producto: pr, ofertas, desde: 'chat' });
+        if (ofertas.length) tarjetasPrecios({ tienda: t.host, ...pr }, ofertas);
+        return { salida: { ok: true, aqui: { tienda: t.host, ...pr }, ofertas, nota: 'Photo cards of each store are already shown in the chat; just summarize briefly which one is cheapest and how much they save.' } };
+      }
+      catch (e) { return { salida: { ok: false, error: e.sinGemini ? 'Price comparison needs the Gemini key.' : String(e.message || e) } }; }
+    }
+    case 'ask_video': {   // 🎬 [09-nov]
+      if (cfg.preguntaVideo === false) return { salida: { ok: false, error: '«Ask the video» is turned off in Settings.' } };
+      const w = wc(); const u = w ? w.getURL() : '';
+      if (!esVideoYT(u)) return { salida: { ok: false, error: 'Open a YouTube video first.' } };
+      try { return { salida: { ok: true, respuesta: await cerebro.preguntarVideo(u, a.question || 'Give me the chapters of this video.', codIdioma(cfg)), nota: 'Give this answer to the user keeping every [MM:SS] timestamp exactly as written: they become buttons that jump to that moment.' } }; }
+      catch (e) { return { salida: { ok: false, error: String(e.message || e) } }; }
+    }
     case 'take_photo': return { salida: a.what ? await control('foto-imagen', { que: a.what }) : await control('foto-pagina') };
     case 'remember': {
       if (cfg.memoriaJarvis === false) return { salida: { ok: false, error: 'Memory is turned off in Settings.' } };
@@ -1508,6 +1545,117 @@ function descargas(ses) {
 const antivirus = require('./lib/antivirus');
 const memoria = require('./lib/memoria');
 const recuerdos = require('./lib/recuerdos');   // 🧠 memoria del navegador [09-nov]
+const investigador = require('./lib/investigador');   // 🕵 investigador en segundo plano [09-nov]
+const continuar = require('./lib/continuar');         // 🔄 continuar en el otro dispositivo [09-nov]
+const NOMBRE_EN = { es: 'Spanish', en: 'English', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian' };
+let investigando = 0;
+async function investigarFondo(tema) {
+  const llave = cerebro.llave('gemini');
+  if (!llave) return { ok: false, error: T2('El investigador necesita tu llave de Gemini (Configuración › Cerebro).', 'The researcher needs your Gemini key (Settings › Brain).') };
+  if (investigando >= 2) return { ok: false, error: T2('Ya hay 2 investigaciones en marcha; espera a que termine una.', 'There are already 2 research jobs running; wait for one to finish.') };
+  investigando++;
+  aviso('investigacion', { estado: 'empezando', tema });
+  (async () => {
+    try {
+      const r = await investigador.investigar({ llave, tema, idioma: codIdioma(cfg), nombreIdioma: NOMBRE_EN[codIdioma(cfg)] || 'English', carpeta: path.join(CONF, 'informes'),
+        progreso: (paso) => aviso('investigacion', { estado: 'trabajando', tema, paso }) });
+      nueva(require('url').pathToFileURL(r.archivo).href, false);
+      aviso('investigacion', { estado: 'listo', tema, resumen: r.resumen, fuentes: r.fuentes });
+      try { const { Notification } = require('electron'); new Notification({ title: '🕵 JARVIS', body: T2(`Tu informe está listo: ${tema}`, `Your report is ready: ${tema}`) }).show(); } catch { /* */ }
+    } catch (e) { aviso('investigacion', { estado: 'error', tema, error: String(e.message || e).slice(0, 200) }); }
+    finally { investigando--; }
+  })();
+  return { ok: true, nota: 'Research started in the background (1–3 minutes). Tell the user they can keep browsing; the report will open in a new tab and they will be notified.' };
+}
+// 🔄 continuar: lo que estoy viendo y abrir lo que venía viendo el teléfono
+async function ahoraEnPC() {
+  const p = actual(); if (!p || p.privada) return { url: '', titulo: '' };
+  const w = p.vista.webContents; let tiempo = 0;
+  try { tiempo = await w.executeJavaScript("(() => { const v = document.querySelector('#movie_player video') || document.querySelector('video'); return v && v.currentTime > 2 ? Math.floor(v.currentTime) : 0; })()", true); } catch { /* */ }
+  return { url: urlDe(p), titulo: p.dormida ? p.dormida.titulo : w.getTitle(), tiempo };
+}
+function urlConTiempo(u, s) {
+  if (!s) return u;
+  try { const x = new URL(u); if (/youtube\.com$|youtu\.be$/.test(x.hostname.replace(/^www\.|^m\./, ''))) { x.searchParams.set('t', `${s}s`); return x.href.replace('://m.youtube.com', '://www.youtube.com'); } } catch { /* */ }
+  return u;
+}
+function abrirDesdeTelefono({ url: u, tiempo }) {
+  nueva(urlConTiempo(u, tiempo), true);
+  if (tiempo && !/youtu/.test(u)) { const w = wc(); if (w) w.once('did-finish-load', () => setTimeout(() => w.executeJavaScript(`(() => { const v = document.querySelector('video'); if (v) { v.currentTime = ${Number(tiempo)}; v.play(); } })()`, true).catch(() => {}), 1500)); }
+  if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); }
+  aviso('continuar', { abierto: u });
+}
+function arrancarContinuar(forzar) {
+  if (cfg.continuarDispositivo === false) { continuar.apagar(); return null; }
+  if (!forzar && !(cfg.continuarTokens || []).length) return null;
+  return continuar.encender({ tokens: () => (cfg.continuarTokens || []).map((x) => x.token), ahora: ahoraEnPC, abrir: abrirDesdeTelefono, avisar: (e) => aviso('continuar', e),
+    guardarToken: (token, nombre) => { cfg.continuarTokens = [...(cfg.continuarTokens || []), { token, nombre, t: Date.now() }].slice(-5); proteccion.guardarConfig(cfg); } });
+}
+setTimeout(() => arrancarContinuar(false), 4000);
+const vivo = require('./lib/vivo');             // 🗣 conversación en vivo (Gemini Live) [09-nov]
+const T2 = (es, en) => (codIdioma(cfg) === 'es' ? es : en);
+const estafas = require('./lib/estafas');       // 🛡 detector de estafas · 💰 comparador de precios [09-nov]
+const revisadasTienda = new Map(); const preciosVistos = new Map(); let ultimoPrecio = 0;
+function revisarTienda(w) {
+  if (cfg.detectorEstafas === false && cfg.comparadorPrecios === false) return;
+  clearTimeout(w.__tiendaT);
+  w.__tiendaT = setTimeout(async () => {
+    if (w.isDestroyed() || w !== wc()) return;   // solo la pestaña que estás mirando
+    const u = w.getURL(); if (!/^https:/.test(u)) return;
+    let d = null; try { d = await w.executeJavaScript(estafas.JS_TIENDA, true); } catch { return; }
+    if (!estafas.esTienda(d)) return;
+    const host = proteccion.host(u);
+    if (cfg.comparadorPrecios !== false && !d.producto && (d.carrito || /amazon\.|walmart\.|bestbuy\.|target\.|ebay\./.test(host))) anotarPrecio({ url: u.split('#')[0], sinProducto: true, precios: d.precios, carrito: d.carrito });
+    if (cfg.detectorEstafas !== false && !revisadasTienda.has(host)) {
+      revisadasTienda.set(host, true);
+      const r = await estafas.revisar(host, d);
+      if (r.puntos >= 3) {
+        let ia = null;
+        try { ia = await cerebro.analizarEstafa({ senales: r.senales, titulo: d.titulo, url: u, texto: d.texto }, codIdioma(cfg)); } catch { /* sin IA: con las señales basta */ }
+        const es = codIdioma(cfg) === 'es';
+        if (!ia ? r.puntos >= 4 : ia.riesgo !== 'bajo') {
+          aviso('estafa', { host, riesgo: ia ? ia.riesgo : 'medio', resumen: ia ? ia.resumen : '', motivos: (ia && ia.motivos && ia.motivos.length ? ia.motivos : r.motivos.map((m) => (es ? m.es : m.en))).slice(0, 4) });
+        }
+      }
+    }
+    if (cfg.comparadorPrecios !== false && d.producto && d.producto.precio > 0 && d.producto.nombre) {
+      const clave = u.split('#')[0];
+      if (preciosVistos.has(clave) || Date.now() - ultimoPrecio < 15000) return;
+      preciosVistos.set(clave, true); ultimoPrecio = Date.now();
+      await pausa(3000); if (w.isDestroyed() || w.getURL().split('#')[0] !== clave) return;   // sigues en la página
+      let ofertas = []; try { ofertas = await cerebro.compararPrecios({ ...d.producto, tienda: host }); } catch (e) { anotarPrecio({ url: clave, producto: d.producto, error: String(e.message || e).slice(0, 200) }); return; }
+      const moneda = String(d.producto.moneda || 'USD').toUpperCase();
+      const mejores = ofertas.filter((o) => o.moneda.toUpperCase() === moneda && o.precio < d.producto.precio * 0.97 && proteccion.host(o.url) !== host).sort((a, b) => a.precio - b.precio);
+      anotarPrecio({ url: clave, producto: d.producto, ofertas, mejores: mejores.length });
+      if (mejores.length) aviso('precio', { tienda: host, precio: d.producto.precio, moneda, producto: d.producto.nombre, mejor: mejores[0], otras: mejores.slice(1, 4) });
+      if (ofertas.length) tarjetasPrecios({ tienda: host, ...d.producto }, ofertas);   // 🖼 tarjetas con foto en el chat
+    }
+  }, 2500);
+}
+// registro de pruebas del comparador (sin llaves ni datos personales): ~/.config/jarvis/navegador-precios.log
+function anotarPrecio(x) { try { fs.appendFileSync(path.join(CONF, 'navegador-precios.log'), JSON.stringify({ t: new Date().toISOString(), ...x }) + '\n'); } catch { /* */ } }
+// 🖼 la foto de cada oferta (la imagen principal de la página de esa tienda) → tarjetas en el chat [09-nov]
+async function fotoDe(url) {
+  try {
+    const ses = session.fromPartition('persist:jarvis');
+    const r = await ses.fetch(url, { signal: AbortSignal.timeout(9000), headers: { 'Accept-Language': 'en-US,en;q=0.9,es;q=0.8' } });
+    if (!r.ok) return '';
+    const html = (await r.text()).slice(0, 600000);
+    const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i)
+      || html.match(/"image"\s*:\s*\[?\s*"(https:[^"]+)"/i);
+    return m ? m[1].replace(/&amp;/g, '&') : '';
+  } catch { return ''; }
+}
+async function tarjetasPrecios(aqui, ofertas) {
+  const lista = ofertas.slice(0, 5);
+  await Promise.all(lista.map(async (o) => { o.foto = await fotoDe(o.url); }));
+  aviso('precio-chat', { aqui: { tienda: aqui.tienda, precio: aqui.precio, moneda: aqui.moneda || 'USD', nombre: aqui.nombre, foto: aqui.foto || '', estado: aqui.estado || '' }, ofertas: lista });
+}
+async function revisarTiendaAhora() {   // para «Jarvis, ¿esta tienda es confiable?» y «¿está más barato en otro lado?»
+  const w = wc(); if (!w) return { ok: false, error: 'No page.' };
+  let d = null; try { d = await w.executeJavaScript(estafas.JS_TIENDA, true); } catch { return { ok: false, error: 'Could not read the page.' }; }
+  return { ok: true, w, d, host: proteccion.host(w.getURL()) };
+}
 const net = require('net');
 const dnsP = require('dns').promises;
 
@@ -1749,12 +1897,13 @@ ipcMain.handle('nav-config', async (_e, accion, d) => {
     case 'leer': return cfg;
     case 'buscadores': return proteccion.BUSCADORES;
     case 'poner': {
-      const permitidas = Object.keys(proteccion.PREDETERMINADA).filter((k) => !['telegramChat', 'telegramBot'].includes(k));
+      const permitidas = Object.keys(proteccion.PREDETERMINADA).filter((k) => !['telegramChat', 'telegramBot', 'continuarTokens'].includes(k));
       for (const [k, v] of Object.entries(d || {})) if (permitidas.includes(k)) cfg[k] = v;
       proteccion.guardarConfig(cfg); acomodar(); avisarEstado();
       if (d && 'vozSiempre' in d) aviso('oido', Boolean(cfg.vozSiempre));   // encender o apagar el oído al momento
       if (d && ['cerebroLocal', 'localPrimero', 'localArrancar', 'localUrl', 'localBat'].some((k) => k in d)) { configurarLocal(); aviso('llaves'); }
       if (d && 'tema' in d) cambioTema();
+      if (d && 'continuarDispositivo' in d) arrancarContinuar(false);   // 🔄 [09-nov]
       if (d && ('centroMando' in d || 'pantallaMando' in d)) { if ('pantallaMando' in d) centroMando(false); centroMando(Boolean(cfg.centroMando)); }
       return cfg;
     }
@@ -1789,6 +1938,9 @@ ipcMain.handle('nav-config', async (_e, accion, d) => {
     case 'actualizar-buscar': { const r = await revisarActualizacion(true); return { actual: app.getVersion(), nueva: r ? r.version : '' }; }
     case 'actualizar-ya': return actualizarAhora();
     case 'importar-perfiles': return importar.perfiles();
+    case 'continuar-codigo': { const r = arrancarContinuar(true); if (!r) return { ok: false, error: 'off' }; return { ok: true, ...continuar.nuevoCodigo() }; }
+    case 'continuar-estado': return { ok: true, ip: continuar.ipLocal(), puerto: continuar.PUERTO, telefonos: (cfg.continuarTokens || []).map((x) => ({ nombre: x.nombre, t: x.t })) };
+    case 'continuar-olvidar': cfg.continuarTokens = []; proteccion.guardarConfig(cfg); continuar.apagar(); return true;
     case 'importar': return importarDe(d && d.id, d || {});
     case 'predeterminado': return hacerPredeterminado();
     case 'predeterminado-estado': return esPredeterminado();
@@ -1988,6 +2140,29 @@ ipcMain.handle('nav', async (_e, accion, d) => {
     case 'chat-nuevo': cerebro.olvidar(); return true;
     case 'leer-voz': { const pag = await control('leer'); return backend('/api/decir', { texto: (pag.texto || '').slice(0, 1500) }, 8000); }
     case 'tts': return vozBytes(String(d || '').slice(0, 600));
+    case 'vivo': {   // 🗣 conversación en vivo [09-nov]
+      if (!d) { vivo.parar(); return { ok: true }; }
+      if (cfg.conversacionVivo === false) return { ok: false, error: T2('La conversación en vivo está apagada en Configuración › Funciones inteligentes.', 'Live conversation is turned off in Settings › Smart features.') };
+      const llave = cerebro.llave('gemini'); if (!llave) return { ok: false, error: T2('La conversación en vivo necesita tu llave de Gemini (Configuración › Cerebro).', 'Live conversation needs your Gemini key (Settings › Brain).') };
+      const cod = codIdioma(cfg);
+      const hechos = cfg.memoriaJarvis !== false ? memoria.todas().slice(0, 25).map((x) => '- ' + x.texto).join('\n') : '';
+      const p = actual();
+      vivo.empezar({ llave, HERRAMIENTAS: cerebro.HERRAMIENTAS, avisar: (ev) => aviso('vivo', ev),
+        sistema: cerebro.sistemaBase(cod) + `\n\nTHIS IS A LIVE VOICE CONVERSATION (like a phone call): answer in short, natural spoken sentences, no markdown, no lists, no URLs read aloud. The user may interrupt you. You can control the browser with your tools while you talk (open sites, search, scroll, read or summarize the page, ask about the video, check scams, compare prices…). Briefly say what you're doing.`
+          + (p && !p.privada ? `\nThe user is now on: ${p.dormida ? p.dormida.titulo : p.vista.webContents.getTitle()} — ${urlDe(p)}` : '') + (hechos ? `\nWhat you remember about the user:\n${hechos}` : ''),
+        ejecutar: async (n, a) => { const r = await herramienta(n, a); return r && r.salida !== undefined ? r.salida : r; } });
+      return { ok: true };
+    }
+    case 'continuar-telefono': {   // 💻→📱
+      if (!(cfg.continuarTokens || []).length) return { ok: false, error: T2('Primero empareja el teléfono en Configuración › Continuar en el otro dispositivo.', 'First pair the phone in Settings › Continue on the other device.') };
+      continuar.mandarAlTelefono(await ahoraEnPC()); return { ok: true };
+    }
+    case 'vivo-audio': vivo.audio(String(d || '')); return true;
+    case 'vivo-texto': vivo.textoUsuario(String(d || '')); return true;
+    case 'video-ir': {   // ⏱ los minutos [MM:SS] del chat saltan a ese momento del video [09-nov]
+      const w = wc(); const s = Math.max(0, Number(d) || 0); if (!w) return false;
+      return w.executeJavaScript(`(() => { const p = document.getElementById('movie_player'); if (p && p.seekTo) { p.seekTo(${s}, true); p.playVideo && p.playVideo(); return true; } const v = document.querySelector('video'); if (!v) return false; v.currentTime = ${s}; v.play(); return true; })()`, true).catch(() => false);
+    }
     case 'tts-doblaje': return cerebro.vozDoblaje(String((d && d.texto) || '').slice(0, 1000), (d && d.lang) || 'es');   // 🗣 voz nativa [09-nov]
     case 'leyendo': leyendo = Boolean(d); avisarEstado(); return true;
     case 'leer-pagina': return control('leer-desde', { desde: '' });

@@ -632,6 +632,19 @@ public class MainActivity extends Activity {
                     String q = d.optString("tipo").equals("camara") ? Manifest.permission.CAMERA : d.optString("tipo").equals("notificaciones") && Build.VERSION.SDK_INT >= 33 ? Manifest.permission.POST_NOTIFICATIONS : Manifest.permission.RECORD_AUDIO;
                     if (tiene(q)) return true; requestPermissions(new String[]{q}, PIDE_PERMISO); return false;
                 }
+                case "vivo": {   // 🗣 conversación en vivo (Gemini Live, nativo: la llave no sale de aquí) [09-nov]
+                    if (!d.optBoolean("on")) { hilos.execute(vivo::parar); return true; }
+                    String llave = boveda.get("gemini"); if (llave.isEmpty()) return resultado(false, "sin-gemini");
+                    if (!tiene(Manifest.permission.RECORD_AUDIO)) { requestPermissions(new String[]{ Manifest.permission.RECORD_AUDIO }, PIDE_PERMISO); return resultado(false, "permiso"); }
+                    vivo.empezar(llave, d.optString("sistema"), d.optJSONArray("herramientas"), new Vivo.Oyente() {
+                        @Override public void evento(JSONObject e) { ui.post(() -> emitir("vivo", e.toString())); }
+                        @Override public void herramienta(String id, String nombre, JSONObject args) {
+                            try { String j = new JSONObject().put("id", id).put("nombre", nombre).put("args", args).toString(); ui.post(() -> emitir("vivo-herramienta", j)); } catch (Exception ignored) { }
+                        }
+                    });
+                    return resultado(true, null);
+                }
+                case "vivo-respuesta": { final JSONObject sal = d.optJSONObject("salida"); final String id = d.optString("id"), nom = d.optString("nombre"); hilos.execute(() -> vivo.responder(id, nom, sal)); return true; }
                 case "monitor": return monitor();
                 case "gestos-modelo": return modeloGestos();
                 case "escaneo": return p == null ? JSONObject.NULL : escaneo(p);
@@ -830,7 +843,9 @@ public class MainActivity extends Activity {
         detenida = true; ui.removeCallbacks(vigiaPip);
         if (System.currentTimeMillis() - finPip < 2000) pipEnPagina("window.__jarvisPip.pausar()");   // cerraste la ventanita con la X → el video se para
     }
+    final Vivo vivo = new Vivo();   // 🗣 conversación en vivo [09-nov]
     @Override protected void onDestroy() {
+        vivo.parar();
         if (receptorPip != null) try { unregisterReceiver(receptorPip); } catch (Exception ignored) { }
         super.onDestroy();
     }

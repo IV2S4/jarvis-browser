@@ -236,7 +236,7 @@ Consejo: empieza con ✌ y ☝ (bajar y subir), que son los más fáciles; para 
 | 👍 Pulgar arriba (1 s) | Llamar a JARVIS (micrófono) |
 | ✊ Puño cerrado (1,5 s) | Cerrar la pestaña |
 | 🤏 Pellizco y subir o bajar la mano | Zoom más / menos |
-| ✊ y luego 🖐 Agarrar la página y lanzarla de lado abriendo la mano | Manda la página a tu teléfono (PC) |
+| 4 dedos arriba con el pulgar doblado sobre la palma, quieto 1 s | Manda la página a tu teléfono (PC) |
 
 ---
 
@@ -248,9 +248,15 @@ Cada una tiene su propio interruptor en **Ajustes › 🚀 Funciones inteligente
 |---|---|---|
 | 💤 **Pausa automática** | Con la cámara de los gestos encendida: te paras y te vas, y el video se pausa; vuelves y sigue solo. | PC y Android |
 | 👁 **Guardián de privacidad** | Con la cámara de los gestos encendida: si otra persona aparece mirando tu pantalla, la página se tapa (y la barra de direcciones se difumina) hasta que se vaya. | PC y Android |
-| 📲 **Lanzar al teléfono** | Cierra la mano ✊ como si agarraras la página y lánzala de lado abriendo la mano 🖐: la página te llega al teléfono por Telegram. | PC |
+| 📲 **Mandar al teléfono** | Levanta los 4 dedos con el pulgar doblado sobre la palma y quédate quieto 1 segundo: la página te llega al teléfono por Telegram. | PC |
 | 🧠 **Memoria del navegador** | *"Jarvis, ¿dónde vi unos tenis rojos?"* — JARVIS encuentra la página por lo que tenía, no solo por el título. Se guarda un pedacito del texto de cada página **solo en tu equipo** (nunca pestañas privadas, bancos, correo ni páginas con contraseña). Al borrar el historial también se borra. | PC y Android |
 | 🗣 **Doblaje en vivo** | En un video: *"Jarvis, dobla este video al español"* (o el botón 🗣 en Android). JARVIS pone los subtítulos traducidos y los lee en voz alta con una **voz nativa de ese idioma**, bajando el sonido original. *"Jarvis, quita el doblaje"* para pararlo. Si hay un anuncio, empieza solo cuando termine. Funciona con videos que tengan subtítulos (casi todo YouTube, aunque sean automáticos). | PC y Android |
+| 🗣 **Conversación en vivo** | Toca **"🗣 En vivo"** en el chat de JARVIS y háblale como en una llamada: te contesta con voz al momento, lo puedes interrumpir y maneja el navegador mientras hablan ("abre YouTube", "¿esta tienda es confiable?"). Usa Gemini Live con tu llave de Gemini. Con audífonos funciona mejor. | PC y Android |
+| 🛡 **Detector de estafas** | Al entrar a una tienda en línea, JARVIS revisa la edad del dominio (registro público RDAP), si imita a una marca, terminaciones riesgosas, si falta contacto y si pide pagos raros; si suma riesgo, la IA lo confirma y te avisa antes de comprar. Pregunta cuando quieras: *"¿esta tienda es confiable?"* | PC y Android |
+| 🎬 **Pregúntale al video** | En un video de YouTube pregunta *"¿en qué minuto explica…?"* o toca **"🎬 Capítulos"**: Gemini ve el video y los minutos salen como botones ⏱ que saltan a ese momento. | PC y Android |
+| 💰 **Comparador de precios** | En la página de un producto (Amazon, Walmart, Best Buy, eBay…) JARVIS busca el mismo en otras tiendas con precios de hoy; si está más barato te avisa, y en el chat salen tarjetas con la foto de cada tienda, el precio y cuánto ahorras. | PC y Android |
+| 🕵 **Investigador en segundo plano** | *"Jarvis, investiga los mejores audífonos con cancelación de ruido por menos de $300"* — hace varias búsquedas mientras sigues navegando y te entrega un informe con tabla comparativa, recomendación y fuentes (pestaña nueva en la PC, chat en Android). | PC y Android |
+| 🔄 **Continuar en el otro dispositivo** | Empareja el teléfono con la PC una vez (código de 6 números, solo en el WiFi de casa). Luego **💻 Seguir en la PC** / **📲 Traer de la PC** en el teléfono y **📱 Seguir en el teléfono** en la PC se pasan la página, y los videos siguen en el mismo minuto. | PC y Android |
 | 📸 **Busca lo que ves** | *"Jarvis, ¿qué es esto?"* — en Android se abre la cámara de atrás: apuntas y tocas 📸; en la PC toma una foto con tu cámara. JARVIS te dice qué es y lo busca. | PC y Android |
 
 **Voces nativas para el doblaje:** JARVIS nunca lee un idioma con acento extranjero. En Android usa las voces de Google del teléfono. En la PC usa la voz de Windows de ese idioma — se instala gratis en Configuración de Windows › Hora e idioma › Voz › Agregar voces — o, si no está, tu llave de OpenAI o Gemini. Sin ninguna de esas, deja solo los subtítulos traducidos.
@@ -266,6 +272,9 @@ El navegador **no tiene telemetría**: no manda estadísticas, ni lo que haces, 
 | La IA que elijas (Google, Anthropic u OpenAI) | Tu pregunta, y el texto o una foto de la página si la pregunta lo necesita | Solo cuando le hablas a JARVIS |
 | Tu propio bot de Telegram | La página o el clip que mandas | Solo cuando lo pides |
 | Tu IA elegida | Una foto de la cámara, solo cuando preguntas "¿qué es esto?"; las frases del doblaje, solo si usas tu llave de IA para la voz | Solo cuando lo pides |
+| Google Gemini (tu llave) | El audio de la conversación en vivo; el nombre y precio del producto para comparar; las preguntas del investigador; la dirección del video de YouTube para "pregúntale al video" | Solo cuando usas esas funciones |
+| rdap.org | El nombre de dominio de una tienda en línea (para saber su edad) | Al entrar a una tienda, si el detector de estafas está encendido |
+| Tu propia PC (WiFi de casa) | La dirección de la página y el minuto del video, entre tu teléfono y tu PC emparejados | Solo cuando tocas continuar |
 | VirusTotal (opcional) | La huella (hash) del archivo descargado, nunca el archivo | Al terminar una descarga |
 | ip-api.com | Las IP de los servidores de la página, para dibujar el mapa | Al abrir el escáner |
 | Quad9 (opcional) | Los nombres de las páginas que visitas (DNS seguro) | Si activas el DNS seguro |

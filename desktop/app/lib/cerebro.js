@@ -389,6 +389,52 @@ async function voz(texto, cod, motor = 'auto') {
   return null;   // la interfaz habla con la voz de Windows
 }
 
+// 🎬 Pregúntale al video [09-nov]: Gemini ve el video de YouTube y contesta con los minutos exactos [MM:SS]
+async function preguntarVideo(url, pregunta, cod) {
+  if (!cargarLlaves().gemini) { const e = new Error('Pregúntale al video necesita la llave de Gemini (Configuración › Cerebro).'); e.sinGemini = true; throw e; }
+  const pedido = `${pregunta}\n\nAnswer in ${idiomaDe(cod)}, short and clear. Every time you mention a moment of the video, write its exact timestamp in square brackets like [MM:SS] (or [H:MM:SS] for long videos) — they become buttons that jump to that moment. If asked for chapters, give a short list where each line starts with its [MM:SS] timestamp and a short title.`;
+  const r = await pensar({ sistema: sistemaBase(cod), soloCon: ['gemini'], historia: [{ rol: 'user', imagenes: [{ uri: url }], texto: pedido }], max: 1500 }, ['gemini']);
+  return r.texto;
+}
+
+// Gemini con búsqueda en Google (para comparar precios con datos de hoy) [09-nov]
+async function geminiConBusqueda(texto, max = 1500) {
+  const k = cargarLlaves(); if (!k.gemini) { const e = new Error('sin-gemini'); e.sinGemini = true; throw e; }
+  let ultimo = null;
+  for (const modelo of ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']) {   // si uno no tiene cuota, el siguiente
+    try {
+      const j = await pedir(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, { 'x-goog-api-key': k.gemini },
+        { contents: [{ role: 'user', parts: [{ text: texto }] }], tools: [{ google_search: {} }], generationConfig: { maxOutputTokens: max, temperature: 0.2 } }, 60000);
+      const t = (j?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+      if (t) return t;
+    } catch (e) { ultimo = e; }
+  }
+  throw ultimo || new Error('sin respuesta');
+}
+const sacarJson = (t) => { const s = String(t || '').replace(/```(?:json)?/g, ''); const a = s.indexOf('{'); const b = s.lastIndexOf('}'); return JSON.parse(s.slice(a, b + 1)); };
+
+// 💰 Comparador de precios [09-nov]: el mismo producto en otras tiendas grandes, con precio de hoy
+async function compararPrecios(p) {
+  const t = await geminiConBusqueda(`Search the web for the CURRENT price of exactly this product in other big online stores${p.pais ? ` in ${p.pais}` : ' in the United States'} (Amazon, Walmart, Best Buy, Target, eBay new, Costco, the brand's own store…), excluding ${p.tienda}.
+Product: ${p.nombre}${p.marca ? `\nBrand: ${p.marca}` : ''}${p.modelo ? `\nModel/SKU/GTIN: ${p.modelo}` : ''}
+Price here at ${p.tienda}: ${p.precio} ${p.moneda || 'USD'}${p.estado === 'used' ? ' (this one is USED; compare with NEW prices)' : ''}
+Only the SAME product (same model, size, capacity, condition new). Reply ONLY with JSON: {"ofertas":[{"tienda":"Walmart","precio":123.45,"moneda":"USD","url":"https://…"}]} — up to 5, cheapest first, real product page URLs; {"ofertas":[]} if none found.`, 1200);
+  const j = sacarJson(t);
+  return (Array.isArray(j.ofertas) ? j.ofertas : []).filter((o) => o && o.tienda && Number(o.precio) > 0 && /^https:\/\//.test(o.url || ''))
+    .map((o) => ({ tienda: String(o.tienda).slice(0, 40), precio: Number(o.precio), moneda: String(o.moneda || p.moneda || 'USD').slice(0, 4), url: String(o.url) }));
+}
+
+// 🛡 Detector de estafas [09-nov]: la IA mira las señales y el texto de la tienda y da un veredicto
+async function analizarEstafa(d, cod) {
+  const r = await pensar({ sistema: 'You are an online-fraud analyst. Be calibrated: well-known legitimate stores are safe; do not cry wolf.', historia: [{ rol: 'user', texto:
+`Is this online store/page a likely scam? Signals collected by the browser:
+${JSON.stringify(d.senales)}
+Page: ${d.titulo} — ${d.url}
+Text excerpt: ${String(d.texto || '').slice(0, 5000)}
+Reply ONLY with JSON: {"riesgo":"bajo|medio|alto","resumen":"one short sentence in ${idiomaDe(cod)}","motivos":["up to 4 short reasons in ${idiomaDe(cod)}"]}` }], max: 500 });
+  return sacarJson(r.texto);
+}
+
 // 🗣 voz del doblaje en vivo [09-nov]: nativa del idioma (nada de acento extranjero). Con tu llave de OpenAI o de Gemini;
 // si no hay, null (la interfaz usa la voz de Windows de ese idioma si está instalada, o deja solo los subtítulos).
 const NOMBRE_EN = { es: 'Spanish (Latin American)', en: 'American English', pt: 'Brazilian Portuguese', fr: 'French', de: 'German', it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Mandarin Chinese', ru: 'Russian' };
@@ -443,6 +489,11 @@ const HERRAMIENTAS = [
   { nombre: 'browser_memory', desc: 'Search the user\'s browser memory: the text of pages they visited before (not just titles). Use it when the user asks where they saw something ("where did I see some red sneakers?", "that recipe I read last week"). Put keywords in the query in BOTH the user\'s language and English, with synonyms (e.g. "tenis rojos zapatillas red sneakers shoes").', params: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
   { nombre: 'live_dubbing', desc: 'Live dubbing of the video in the current page: reads its subtitles aloud translated into a language (code like es, en) and lowers the original sound. on=false turns it off. Use for "dub this video", "dóblalo al español", "quita el doblaje".', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'look_through_camera', desc: 'Take a photo with the user\'s camera to see a real object the user is showing (not the page). Use it for "what is this?", "¿qué es esto?", "busca esto que te enseño", "look at this". Then identify it and search it with web_search if useful.' },
+  { nombre: 'deep_research', desc: 'Start a deep web research in the background on a topic (several searches + a written report with a comparison table and sources, opened in a new tab when ready, 1–3 min). Use for "investiga…", "research…", "compare the best X for me".', params: { type: 'object', properties: { topic: { type: 'string', description: 'the full research request in the user\'s words' } }, required: ['topic'] } },
+  { nombre: 'continue_on_phone', desc: 'Send what the user is watching on the PC (page and video minute) to their paired phone, to continue there. Use for "sigo en el teléfono", "pásalo al teléfono", "continue on my phone".' },
+  { nombre: 'check_scam', desc: 'Check whether the current store/page is a scam: domain age, brand imitation, payment methods and an AI analysis. Use for "is this store legit?", "¿esta tienda es confiable?".' },
+  { nombre: 'compare_prices', desc: 'Find the same product of the current page cheaper in other big stores (with today\'s prices). Use for "is it cheaper elsewhere?", "compara precios".', params: { type: 'object', properties: { product: { type: 'string', description: 'only if the page is not a product page' } } } },
+  { nombre: 'ask_video', desc: 'Ask anything about the YouTube video open in the current tab (Gemini watches it): "in which minute does he explain X?", "give me the chapters", "what did he say about Y?". The answer has [MM:SS] timestamps that jump to that moment.', params: { type: 'object', properties: { question: { type: 'string' } }, required: ['question'] } },
   { nombre: 'send_to_phone', desc: 'Send the current page (link, or a screenshot) to the user\'s phone via Telegram. Optional short note.', params: { type: 'object', properties: { what: { type: 'string', enum: ['page', 'screenshot'] }, note: { type: 'string' } } } },
   { nombre: 'youtube_subtitles', desc: 'On a YouTube video, turn on live subtitles translated into a language (code like es, en, fr), or turn them off.', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'save_game_clip', desc: 'Save the last moments of the game the user is playing as a video clip (NVIDIA Instant Replay or Xbox Game Bar) and send it to their phone. Use for "clip that", "save that play".' },
@@ -451,7 +502,7 @@ const HERRAMIENTAS = [
 const ETIQUETAS = { open_url: 'Abriendo', web_search: 'Buscando', read_page: 'Leyendo la página', see_page: 'Mirando la página', click: 'Haciendo clic', type_text: 'Escribiendo',
   scroll: 'Desplazando', navigate: 'Navegando', tabs: 'Pestañas', walkthrough_page: 'Recorriendo la página', summarize_page: 'Resumiendo', translate_page: 'Traduciendo la página',
   read_aloud: 'Leyendo en voz alta', browser_history: 'Mirando el historial', list_tabs: 'Revisando las pestañas', read_tab: 'Leyendo otra pestaña',
-  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', youtube_subtitles: 'Subtítulos', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
+  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', check_scam: 'Revisando si es estafa', deep_research: 'Investigando', continue_on_phone: 'Pasando al teléfono', compare_prices: 'Comparando precios', ask_video: 'Mirando el video', youtube_subtitles: 'Subtítulos', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
 
 let historia = [];
 let turno = 0;
@@ -520,5 +571,5 @@ REMEMBER: whatever language the user writes in, your reply is in ${idiomaDe(h.co
   return { texto: 'I did as much as I could in one go, sir (30 steps). Shall I continue?' };
 }
 
-module.exports = { vozDoblaje, PROVEEDORES, SECRETOS, ponerLlave, estadoLlaves, hayAlguna, llave: (n) => cargarLlaves()[n] || '', pensar, preguntarPagina, describirPagina, describirParte, resumir, traducirLista,
+module.exports = { preguntarVideo, compararPrecios, analizarEstafa, sistemaBase, HERRAMIENTAS, vozDoblaje, PROVEEDORES, SECRETOS, ponerLlave, estadoLlaves, hayAlguna, llave: (n) => cargarLlaves()[n] || '', pensar, preguntarPagina, describirPagina, describirParte, resumir, traducirLista,
   transcribir, voz, chat, olvidar, parar, diagnostico, ultimo: () => ultimoUsado, idiomaDe, NOMBRE_IDIOMA, configurarLocal, localVivo };

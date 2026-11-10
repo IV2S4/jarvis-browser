@@ -144,3 +144,321 @@ function fotoConCamara() {
     };
   });
 }
+
+
+// ═══════════ 🛡 detector de estafas · 💰 comparador de precios · 🎬 pregúntale al video [09-nov] ═══════════
+const JS_TIENDA = `(() => {
+  const txt = (document.body ? document.body.innerText : '').replace(/\\s+/g, ' ');
+  const bajo = txt.toLowerCase();
+  const precios = (txt.match(/(?:US\\$|\\$|€|£|USD|MXN)\\s?\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?/g) || []).length;
+  const carrito = /(add to cart|añadir al carrito|agregar al carrito|comprar ahora|buy now|checkout|pagar ahora|añadir a la cesta|add to bag)/i.test(txt);
+  let producto = null;
+  for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const j = JSON.parse(s.textContent); const lista = [].concat(j['@graph'] || j);
+      for (const x of lista) {
+        const tipo = [].concat(x['@type'] || []).join(',');
+        if (/Product/.test(tipo)) {
+          const of = [].concat(x.offers || [])[0] || {};
+          const oferta = of.offers ? [].concat(of.offers)[0] : of;
+          const precio = Number(oferta.price || oferta.lowPrice || of.lowPrice || 0);
+          producto = { nombre: x.name, marca: (x.brand && (x.brand.name || x.brand)) || '', modelo: x.gtin13 || x.gtin12 || x.gtin || x.mpn || x.sku || x.model || '', precio, moneda: oferta.priceCurrency || of.priceCurrency || '' };
+          break;
+        }
+      }
+    } catch (e) { }
+    if (producto) break;
+  }
+  if (!producto) {   // Amazon y tiendas sin datos estándar: título y precio visibles
+    const q = (s) => { const e = document.querySelector(s); return e ? (e.content || e.textContent || '').trim() : ''; };
+    const num = (t) => { const x = String(t || '').replace(/[^0-9.,]/g, ''); if (!x) return 0; const n = Number(/,\\d{2}$/.test(x) ? x.replace(/\\./g, '').replace(',', '.') : x.replace(/,/g, '')); return n > 0 && n < 1e6 ? n : 0; };
+    const nombre = q('#productTitle') || q('[itemprop="name"]') || q('h1[data-testid*="title" i]') || q('h1');
+    let precio = 0; let precioTxt = '';
+    for (const e of document.querySelectorAll('#corePrice_feature_div .a-offscreen, #corePriceDisplay_desktop_feature_div .a-offscreen, #apex_desktop .a-offscreen, #price_inside_buybox, #usedBuySection .a-color-price, #buybox .a-offscreen, .a-price .a-offscreen, [itemprop="price"], [data-testid*="price" i]')) {
+      precioTxt = (e.content || e.textContent || '').trim(); precio = num(precioTxt); if (precio) break;
+    }
+    if (!precio) { const w = q('.a-price-whole'); const f = q('.a-price-fraction'); precio = num(w + (f ? '.' + f : '')); }
+    if (nombre && precio > 0 && (document.querySelector('#add-to-cart-button, #buy-now-button, [name="submit.add-to-cart"], [data-testid*="add-to-cart" i]') || /amazon\./.test(location.hostname))) {
+      producto = { nombre: nombre.slice(0, 200), marca: q('#bylineInfo').replace(/^(Visit the|Brand:|Visita la tienda de|Marca:)\\s*/i, '').replace(/\\s*Store$/i, ''), modelo: '', precio, moneda: q('[itemprop="priceCurrency"]') || (/€/.test(precioTxt) ? 'EUR' : /£/.test(precioTxt) ? 'GBP' : 'USD'),
+        foto: (document.querySelector('#landingImage, #imgTagWrapperId img') || {}).src || '',
+        estado: /used|usado|renewed|reacondicionado/i.test(q('#usedBuySection') + q('#buybox')) ? 'used' : 'new' };
+    }
+  }
+  if (!producto) {
+    const m = (p) => { const e = document.querySelector('meta[property="' + p + '"], meta[name="' + p + '"]'); return e ? e.content : ''; };
+    const precio = Number(m('product:price:amount') || m('og:price:amount') || 0);
+    if (precio && (m('og:type') || '').includes('product')) producto = { nombre: m('og:title') || document.title, marca: m('product:brand'), modelo: '', precio, moneda: m('product:price:currency') || m('og:price:currency') };
+  }
+  if (producto && !producto.foto) { const og = document.querySelector('meta[property="og:image"]'); producto.foto = og ? og.content : ''; }
+  return {
+    url: location.href, titulo: document.title, precios, carrito, producto,
+    contacto: /(contact us|contáctanos|contacto|customer service|servicio al cliente|atención al cliente)/i.test(txt),
+    devoluciones: /(return policy|refund|política de devoluci|devoluciones|reembolso)/i.test(txt),
+    descuentos: (bajo.match(/-\\s?(7\\d|8\\d|9\\d)\\s?%|(7\\d|8\\d|9\\d)\\s?% off/g) || []).length,
+    soloTransferencia: /(zelle|western union|bank transfer only|solo transferencia|crypto only|bitcoin only|gift card)/i.test(txt),
+    texto: txt.slice(0, 6000),
+  };
+})()`;
+const MARCAS_TIENDA = ['amazon', 'walmart', 'bestbuy', 'target', 'ebay', 'apple', 'nike', 'adidas', 'paypal', 'samsung', 'microsoft', 'netflix', 'costco', 'shein', 'temu', 'aliexpress', 'mercadolibre', 'playstation', 'xbox', 'steam'];
+const TLD_RIESGO = /\.(shop|top|xyz|store|online|site|buzz|click|icu|cfd|sbs|cyou|live|vip|fun|rest|bond|lol|today|monster)$/i;
+const raizDominio = (host) => host.replace(/^www\./, '').split('.').slice(-2).join('.');
+const sinNumeros = (s) => s.replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e').replace(/5/g, 's').replace(/@/g, 'a');
+
+// edad del dominio en días (registro público RDAP); null si no se sabe
+const edades = new Map();
+async function edadDominio(host) {
+  const d = raizDominio(host);
+  if (edades.has(d)) return edades.get(d);
+  let dias = null;
+  try {
+    const r = await Cerebro.fetchN(`https://rdap.org/domain/${encodeURIComponent(d)}`, { timeout: 8000, headers: { Accept: 'application/rdap+json' } });
+    if (r.ok) {
+      const j = await r.json();
+      const ev = (j.events || []).find((e) => e.eventAction === 'registration');
+      if (ev && ev.eventDate) dias = Math.floor((Date.now() - Date.parse(ev.eventDate)) / 864e5);
+    }
+  } catch { /* sin internet o el registro no responde */ }
+  edades.set(d, dias);
+  return dias;
+}
+
+// suma señales; devuelve { puntos, senales, motivos }
+async function revisarSenales(host, d) {
+  const senales = {}; const motivos = []; let puntos = 0;
+  const dominio = raizDominio(host); const nombre = dominio.split('.')[0];
+  const dias = await edadDominio(host); senales.edadDias = dias;
+  if (dias != null && dias < 90) { puntos += 3; motivos.push({ es: `El dominio se creó hace solo ${dias} días`, en: `The domain was created only ${dias} days ago` }); }
+  else if (dias != null && dias < 365) { puntos += 1; motivos.push({ es: 'El dominio tiene menos de un año', en: 'The domain is less than a year old' }); }
+  const marca = MARCAS_TIENDA.find((m) => sinNumeros(nombre).includes(m) && nombre !== m);
+  if (marca) { puntos += 3; senales.imitaMarca = marca; motivos.push({ es: `El nombre imita a «${marca}» pero no es su web oficial`, en: `The name imitates "${marca}" but it is not its official site` }); }
+  if (TLD_RIESGO.test(dominio)) { puntos += 1; senales.terminacion = dominio.split('.').pop(); motivos.push({ es: `Terminación de dominio muy usada en estafas (.${senales.terminacion})`, en: `Domain ending often used by scams (.${senales.terminacion})` }); }
+  if (!d.contacto) { puntos += 1; motivos.push({ es: 'No se ve forma de contacto ni servicio al cliente', en: 'No contact or customer service info visible' }); }
+  if (!d.devoluciones) { puntos += 0.5; }
+  if (d.descuentos >= 3) { puntos += 1; motivos.push({ es: 'Descuentos exagerados (70–90 %) por todas partes', en: 'Huge discounts (70–90%) everywhere' }); }
+  if (d.soloTransferencia) { puntos += 2; motivos.push({ es: 'Pide pagos difíciles de reclamar (transferencia, Zelle, cripto o tarjetas regalo)', en: 'Asks for hard-to-dispute payments (wire, Zelle, crypto or gift cards)' }); }
+  Object.assign(senales, { contacto: d.contacto, devoluciones: d.devoluciones, descuentosExagerados: d.descuentos, pagosRaros: d.soloTransferencia });
+  return { puntos, senales, motivos, dias };
+}
+
+const esTienda = (d) => d && (d.carrito || d.producto || d.precios >= 4);
+const tiendasVistas = new Set(); const preciosVistos = new Set(); let ultimoPrecioT = 0; let tiendaT = 0;
+nav.en('navegado', (h) => {
+  if (E.privada || !h || !/^https:/.test(h.url) || (cfg.detectorEstafas === false && cfg.comparadorPrecios === false)) return;
+  clearTimeout(tiendaT); tiendaT = setTimeout(() => revisarTienda(h.url), 3000);
+});
+async function revisarTienda(url) {
+  if (E.privada || E.url !== url) return;
+  const d = await enPagina(JS_TIENDA); if (!esTienda(d)) return;
+  const host = hostDe(url);
+  if (cfg.detectorEstafas !== false && !tiendasVistas.has(host)) {
+    tiendasVistas.add(host);
+    const r = await revisarSenales(host, d);
+    if (r.puntos >= 3) {
+      let ia = null; try { ia = await Cerebro.analizarEstafa({ senales: r.senales, titulo: d.titulo, url, texto: d.texto }, IDIOMA); } catch { /* */ }
+      if (!ia ? r.puntos >= 4 : ia.riesgo !== 'bajo') {
+        const motivos = (ia && ia.motivos && ia.motivos.length ? ia.motivos : r.motivos.map((m) => T(m.es, m.en))).slice(0, 3);
+        avisadoAlto = url;
+        $('aviso-txt').textContent = `🛡 ${host} ${ia && ia.riesgo === 'alto' ? T('parece una ESTAFA', 'looks like a SCAM') : T('podría ser una estafa', 'might be a scam')}: ${motivos.join(' · ')}`.slice(0, 260);
+        $('aviso-barra').hidden = false; H('vibrar', { ms: 60 }); hablar(T('Cuidado, señor: esta tienda podría ser una estafa.', 'Careful, sir: this store might be a scam.'));
+      }
+    }
+  }
+  if (cfg.comparadorPrecios !== false && d.producto && d.producto.precio > 0 && d.producto.nombre) {
+    const clave = url.split('#')[0];
+    if (preciosVistos.has(clave) || Date.now() - ultimoPrecioT < 15000) return;
+    preciosVistos.add(clave); ultimoPrecioT = Date.now();
+    await pausa(3000); if (E.url.split('#')[0] !== clave) return;
+    let ofertas = []; try { ofertas = await Cerebro.compararPrecios({ ...d.producto, tienda: host }); } catch { return; }
+    const moneda = String(d.producto.moneda || 'USD').toUpperCase();
+    const mejores = ofertas.filter((o) => o.moneda.toUpperCase() === moneda && o.precio < d.producto.precio * 0.97 && hostDe(o.url) !== host).sort((a, b) => a.precio - b.precio);
+    if (mejores.length) barraPrecio({ tienda: host, precio: d.producto.precio, moneda, mejor: mejores[0] });
+    if (ofertas.length) tarjetasPrecios({ tienda: host, ...d.producto }, ofertas);
+  }
+}
+async function revisarEstafaAhora() {
+  const d = await enPagina(JS_TIENDA); if (!d) return { ok: false, error: 'Could not read the page.' };
+  const host = hostDe(E.url); const r = await revisarSenales(host, d);
+  let ia = null; try { ia = await Cerebro.analizarEstafa({ senales: r.senales, titulo: d.titulo, url: E.url, texto: d.texto }, IDIOMA); } catch { /* */ }
+  return { ok: true, sitio: host, edad_dominio_dias: r.dias, puntos_de_riesgo: r.puntos, senales: r.senales, analisis: ia };
+}
+async function compararAhora(producto) {
+  const d = await enPagina(JS_TIENDA); const host = hostDe(E.url);
+  const pr = (d && d.producto) || (producto ? { nombre: producto, precio: 0 } : null);
+  if (!pr) return { ok: false, error: 'This page does not look like a product page. Ask the user which product.' };
+  try {
+    const ofertas = await Cerebro.compararPrecios({ ...pr, tienda: host });
+    if (ofertas.length) tarjetasPrecios({ tienda: host, ...pr }, ofertas);
+    return { ok: true, aqui: { tienda: host, ...pr }, ofertas, nota: 'Photo cards of each store are already shown in the chat; just summarize briefly which one is cheapest and how much they save.' };
+  } catch (e) { return { ok: false, error: e.sinGemini ? 'Price comparison needs the Gemini key.' : String(e.message || e) }; }
+}
+// 🖼 la foto de cada oferta (imagen principal de la página de esa tienda)
+async function fotoDe(url) {
+  try {
+    const r = await Cerebro.fetchN(url, { timeout: 9000, headers: { 'Accept-Language': 'en-US,en;q=0.9,es;q=0.8' } }); if (!r.ok) return '';
+    const html = String(await r.text()).slice(0, 600000);
+    const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i) || html.match(/"image"\s*:\s*\[?\s*"(https:[^"]+)"/i);
+    return m ? m[1].replace(/&amp;/g, '&') : '';
+  } catch { return ''; }
+}
+async function tarjetasPrecios(aqui, ofertas) {
+  const lista = ofertas.slice(0, 5); await Promise.all(lista.map(async (o) => { o.foto = await fotoDe(o.url); }));
+  const mon = (aqui.moneda || 'USD') === 'USD' ? '$' : ''; const f = (n) => mon + Number(n).toFixed(2) + (mon ? '' : ' ' + aqui.moneda);
+  const tarjeta = (o, aquiMismo) => { const ahorro = aqui.precio - o.precio;
+    return `<a class="tarjeta${aquiMismo ? ' aqui' : ahorro > 0.5 ? ' barata' : ''}" ${aquiMismo ? '' : `data-url="${esc(o.url)}"`}><div class="foto">${o.foto ? `<img src="${esc(o.foto)}" alt="" referrerpolicy="no-referrer" />` : '🛒'}</div>
+      <b>${esc(o.tienda)}</b><span class="pr">${f(o.precio)}</span><small>${aquiMismo ? T('aquí', 'here') + (aqui.estado === 'used' ? ' · ' + T('usado', 'used') : '') : ahorro > 0.5 ? T('ahorras', 'save') + ' ' + f(ahorro) : ahorro < -0.5 ? '+' + f(-ahorro) : T('igual', 'same')}</small></a>`; };
+  const dv = document.createElement('div'); dv.className = 'msg j precios';
+  dv.innerHTML = `<div class="cab">💰 ${T('Comparación de precios', 'Price comparison')}<small>${esc(String(aqui.nombre || '').slice(0, 90))}</small></div><div class="tarjetas">${tarjeta({ tienda: aqui.tienda, precio: aqui.precio, foto: aqui.foto }, true)}${lista.map((o) => tarjeta(o, false)).join('')}</div>`;
+  dv.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => { im.parentNode.textContent = '🛒'; }));
+  $('charla').appendChild(dv); $('charla').scrollTop = $('charla').scrollHeight;
+}
+function barraPrecio(x) {
+  let b = $('precio-barra');
+  if (!b) { b = document.createElement('div'); b.id = 'precio-barra'; b.innerHTML = '<span></span><button class="abrir"></button><button class="ver">💰</button><button class="x">✕</button>'; $('aviso-barra').after(b);
+    b.querySelector('.x').onclick = () => { b.hidden = true; }; b.querySelector('.ver').onclick = () => { b.hidden = true; abrirPanel('chat'); }; }
+  const mon = x.moneda === 'USD' ? '$' : ''; const ahorro = (x.precio - x.mejor.precio).toFixed(2);
+  b.querySelector('span').textContent = `💰 ${T('Más barato en', 'Cheaper at')} ${x.mejor.tienda}: ${mon}${x.mejor.precio.toFixed(2)} (${T('ahorras', 'save')} ${mon}${ahorro})`;
+  const ab = b.querySelector('.abrir'); ab.textContent = T('Abrir', 'Open'); ab.onclick = () => { b.hidden = true; H('nueva', { url: x.mejor.url }); };
+  b.hidden = false; H('vibrar', { ms: 25 });
+}
+// ⏱ los minutos del chat saltan a ese momento del video
+function irAlMinuto(s) {
+  enPagina(`(() => { const p = document.getElementById('movie_player'); if (p && p.seekTo) { p.seekTo(${Number(s) || 0}, true); p.playVideo && p.playVideo(); return true; } const v = document.querySelector('video'); if (!v) return false; v.currentTime = ${Number(s) || 0}; v.play(); return true; })()`);
+}
+
+// ═══════════ 🗣 conversación en vivo (Gemini Live, nativo) [09-nov] ═══════════
+const VIVO_HERR = ['open_url', 'web_search', 'tabs', 'scroll', 'navigate', 'read_page', 'summarize_page', 'translate_page', 'zoom', 'find_in_page',
+  'browser_history', 'browser_memory', 'remember', 'send_to_phone', 'youtube_subtitles', 'live_dubbing', 'ask_video', 'check_scam', 'compare_prices', 'picture_in_picture', 'list_tabs'];
+const VV = { on: false, tu: null, el: null, reintento: false };
+function vivoBarra(estado, sub = '') {
+  let b = $('vivo-barra');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'vivo-barra';
+    b.innerHTML = '<div class="orbe-vivo"><i></i><i></i><i></i></div><div class="vivo-txt"><b></b><small></small></div><button class="vivo-fin">■</button>';
+    $('chips-chat').before(b); b.querySelector('.vivo-fin').onclick = () => vivoApagar();
+  }
+  b.hidden = !VV.on; b.querySelector('b').textContent = estado; b.querySelector('small').textContent = sub;
+}
+async function vivoEncender() {
+  if (VV.on) return vivoApagar();
+  if (cfg.conversacionVivo === false) { toast(T('La conversación en vivo está apagada en Ajustes', 'Live conversation is off in Settings')); return; }
+  abrirPanel('chat');
+  const herramientas = Cerebro.HERRAMIENTAS.filter((h) => VIVO_HERR.includes(h.nombre)).map((h) => ({ name: h.nombre, description: h.desc, ...(h.params ? { parameters: h.params } : {}) }));
+  const sistema = Cerebro.sistemaBase(IDIOMA) + '\n\nTHIS IS A LIVE VOICE CONVERSATION on the phone (like a call): answer in short, natural spoken sentences, no markdown, no lists, no URLs read aloud. The user may interrupt you. You can control the browser with your tools while you talk. Briefly say what you are doing.'
+    + (!E.privada && E.url && !E.inicio ? `\nThe user is now on: ${E.titulo || ''} — ${E.url}` : '');
+  VV.on = true; vivoBarra(T('Conectando…', 'Connecting…'));
+  const r = await H('vivo', { on: true, sistema, herramientas });
+  if (r && r.ok) return;
+  VV.on = false; vivoBarra('');
+  if (r && r.error === 'permiso' && !VV.reintento) { VV.reintento = true; toast(T('Dale permiso al micrófono y vuelve a tocar 🗣', 'Allow the microphone and tap 🗣 again')); return; }
+  msg('j', r && r.error === 'sin-gemini' ? T('🗣 La conversación en vivo necesita tu llave de Gemini (Ajustes › Cerebro).', '🗣 Live conversation needs your Gemini key (Settings › Brain).') : T('🗣 No pude empezar la conversación en vivo.', "🗣 Couldn't start the live conversation."));
+}
+function vivoApagar(error) {
+  const estaba = VV.on; VV.on = false; VV.tu = VV.el = null;
+  H('vivo', { on: false }); vivoBarra('');
+  if (error) msg('j', '🗣 ' + error); else if (estaba) msg('j', T('🗣 Conversación en vivo terminada.', '🗣 Live conversation ended.'));
+}
+nav.en('vivo', (ev) => {
+  if (!VV.on || !ev) return;
+  if (ev.estado === 'listo') { H('vibrar', { ms: 30 }); vivoBarra(T('Te escucho…', 'Listening…'), T('Habla cuando quieras · ■ para terminar', 'Speak any time · ■ to end')); return; }
+  if (ev.estado === 'fin' || ev.estado === 'error') { vivoApagar(ev.error); return; }
+  if (ev.interrumpido) { VV.el = null; vivoBarra(T('Te escucho…', 'Listening…')); }
+  if (ev.habla) vivoBarra(T('JARVIS habla…', 'JARVIS speaking…'), T('Puedes interrumpirlo', 'You can interrupt'));
+  if (ev.tu) { if (!VV.tu) VV.tu = msg('u', ''); VV.tu.textContent += ev.tu; VV.el = null; }
+  if (ev.jarvis) { if (!VV.el) VV.el = msg('j', ''); VV.el.textContent += ev.jarvis; VV.tu = null; }
+  if (ev.turno) { VV.tu = VV.el = null; vivoBarra(T('Te escucho…', 'Listening…'), T('Habla cuando quieras · ■ para terminar', 'Speak any time · ■ to end')); }
+  $('charla').scrollTop = $('charla').scrollHeight;
+});
+nav.en('vivo-herramienta', async (x) => {   // JARVIS usa una herramienta mientras hablan
+  if (!x) return;
+  const p = msg('j', '⚙ ' + String(x.nombre || '').replace(/_/g, ' ')); p.style.opacity = '.6';
+  let r = null; try { r = await herramienta(x.nombre, x.args || {}); } catch (e) { r = { salida: { ok: false, error: String(e.message || e) } }; }
+  H('vivo-respuesta', { id: x.id, nombre: x.nombre, salida: (r && r.salida !== undefined ? r.salida : r) || { ok: true } });
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && VV.on) vivoApagar(); });   // sales de la app: se corta
+
+// ═══════════ 🕵 investigador en segundo plano [09-nov] ═══════════
+let investigando = 0;
+function investigarFondo(tema) {
+  if (cfg.investigador === false) return { ok: false, error: 'The background researcher is turned off in Settings.' };
+  if (investigando >= 2) return { ok: false, error: 'There are already 2 research jobs running.' };
+  investigando++;
+  const m = msg('j', T(`🕵 Investigando «${tema}»… puedes seguir navegando, te aviso al terminar.`, `🕵 Researching "${tema}"… keep browsing, I'll let you know.`));
+  (async () => {
+    try {
+      const hoy = `Today is ${new Date().toDateString()}.`;
+      const plan = await Cerebro.buscarWeb(`${hoy} I must research this for a user: "${tema}". Write 4 to 6 specific web-search questions (one per line, no numbering, no extra text) that together cover it well (current options/prices/specs, comparisons, pros and cons, expert reviews).`, 600);
+      const preguntas = plan.texto.split('\n').map((x) => x.replace(/^[-*\d.)\s]+/, '').trim()).filter((x) => x.length > 8).slice(0, 6);
+      const notas = []; const fuentes = new Map();
+      for (let k = 0; k < preguntas.length; k++) {
+        m.textContent = T(`🕵 Investigando «${tema}» · buscando ${k + 1}/${preguntas.length}…`, `🕵 Researching "${tema}" · searching ${k + 1}/${preguntas.length}…`);
+        if (k) await pausa(2500);
+        try { const r = await Cerebro.buscarWeb(`${hoy} Search the web: ${preguntas[k]}\nAnswer with concrete, current facts (names, prices, specs, dates) in bullet points, and put the source page URL in parentheses after each fact.`, 1500); notas.push(`## ${preguntas[k]}\n${r.texto}`); for (const f of r.fuentes) if (fuentes.size < 20) fuentes.set(f.url, f); } catch { /* */ }
+      }
+      if (!notas.length) throw new Error(T('No pude buscar en internet (¿cuota de Gemini?).', "Couldn't search the web (Gemini quota?)."));
+      m.textContent = T(`🕵 Investigando «${tema}» · escribiendo el informe…`, `🕵 Researching "${tema}" · writing the report…`);
+      const final = await Cerebro.buscarWeb(`${hoy} Using ONLY these research notes, write a clear report in ${Cerebro.idiomaDe(IDIOMA)} about: "${tema}". Start with a 2-sentence summary; then a markdown comparison table of the main options (price, key specs, pros, cons…); then "My recommendation". Markdown only, no preamble.\nNOTES:\n${notas.join('\n\n').slice(0, 50000)}`, 4000);
+      m.className = 'msg j'; m.innerHTML = md(`🕵 **${tema}**\n\n${final.texto}\n\n**${T('Fuentes', 'Sources')}:**\n${[...fuentes.values()].map((f) => `- [${f.titulo}](${f.url})`).join('\n')}`);
+      H('notificar', { titulo: '🕵 JARVIS', texto: T(`Tu informe está listo: ${tema}`, `Your report is ready: ${tema}`) }); hablar(T(`Señor, su informe sobre ${tema} está listo.`, `Sir, your report on ${tema} is ready.`));
+    } catch (e) { m.textContent = '🕵 ' + T('No pude terminar la investigación: ', "Couldn't finish the research: ") + String(e.message || e); }
+    finally { investigando--; }
+  })();
+  return { ok: true, nota: 'Research started in the background (1–3 minutes). Tell the user they can keep browsing; the report will appear in the chat with a notification.' };
+}
+
+// ═══════════ 🔄 continuar en la PC (WiFi de casa) [09-nov] ═══════════
+const pcBase = () => { const a = String(cfg.continuarPC || '').trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''); return a ? `http://${a.includes(':') ? a : a + ':8766'}` : ''; };
+async function pcPedir(ruta, cuerpo) {
+  if (cfg.continuarDispositivo === false) return { ok: false, error: T('Está apagado en Ajustes.', 'It is turned off in Settings.') };
+  if (!cfg.continuarToken || !pcBase()) return { ok: false, error: T('Primero empareja la PC en Ajustes › Continuar en la PC.', 'First pair the PC in Settings › Continue on PC.') };
+  try {
+    const r = await Cerebro.fetchN(pcBase() + ruta, { method: cuerpo ? 'POST' : 'GET', timeout: 6000, headers: { Authorization: 'Bearer ' + cfg.continuarToken, 'Content-Type': 'application/json' }, body: cuerpo ? JSON.stringify(cuerpo) : null });
+    if (r.status === 401) return { ok: false, error: T('La PC ya no reconoce este teléfono: empareja de nuevo.', 'The PC no longer knows this phone: pair again.') };
+    if (!r.ok) return { ok: false, error: T('No encuentro la PC en el WiFi (¿está encendida con JARVIS Browser abierto?).', "Can't find the PC on WiFi (is it on with JARVIS Browser open?).") };
+    return await r.json();
+  } catch { return { ok: false, error: T('No encuentro la PC en el WiFi (¿está encendida con JARVIS Browser abierto?).', "Can't find the PC on WiFi (is it on with JARVIS Browser open?).") }; }
+}
+async function tiempoVideo() { return (await enPagina("(() => { const v = document.querySelector('#movie_player video') || document.querySelector('video'); return v && v.currentTime > 2 ? Math.floor(v.currentTime) : 0; })()")) || 0; }
+async function seguirEnPC() {
+  if (E.privada || !/^https?:/.test(E.url || '')) return { ok: false, error: T('Abre primero una página normal (no privada).', 'Open a normal (non-private) page first.') };
+  const tiempo = await tiempoVideo(); if (tiempo) enPagina("(() => { const v = document.querySelector('video'); if (v) v.pause(); })()");
+  return pcPedir('/continuar/abrir', { url: E.url, titulo: E.titulo || '', tiempo });
+}
+function urlConTiempo(u, s) {
+  if (!s) return u;
+  try { const x = new URL(u); if (/(^|\.)youtube\.com$|youtu\.be$/.test(x.hostname)) { x.searchParams.set('t', `${s}s`); return x.href; } } catch { /* */ }
+  return u;
+}
+async function abrirConTiempo(u, s) {
+  await H('nueva', { url: urlConTiempo(u, s) });
+  if (s && !/youtu/.test(u)) setTimeout(() => enPagina(`(() => { const v = document.querySelector('video'); if (v) { v.currentTime = ${Number(s)}; v.play(); } })()`), 4000);
+}
+async function traerDePC() {
+  const r = await pcPedir('/continuar/ahora'); if (!r.ok) return r;
+  if (!/^https?:/.test(r.url || '')) return { ok: false, error: T('En la PC no hay ninguna página abierta.', 'There is no page open on the PC.') };
+  await abrirConTiempo(r.url, r.tiempo); return { ok: true };
+}
+// lo que la PC te manda («📱 Seguir en el teléfono»): se revisa cada 5 s con la app abierta
+setInterval(async () => {
+  if (document.hidden || cfg.continuarDispositivo === false || !cfg.continuarToken) return;
+  const r = await pcPedir('/continuar/pendiente'); const p = r && r.ok && r.pendiente; if (!p || !p.url) return;
+  let b = $('pc-barra');
+  if (!b) { b = document.createElement('div'); b.id = 'pc-barra'; b.innerHTML = '<span></span><button class="abrir"></button><button class="x">✕</button>'; $('aviso-barra').after(b); b.querySelector('.x').onclick = () => { b.hidden = true; }; }
+  b.querySelector('span').textContent = '💻 ' + T('La PC te mandó: ', 'Your PC sent: ') + (p.titulo || hostDe(p.url));
+  const ab = b.querySelector('.abrir'); ab.textContent = T('Abrir', 'Open'); ab.onclick = () => { b.hidden = true; abrirConTiempo(p.url, p.tiempo); };
+  b.hidden = false; H('vibrar', { ms: 40 });
+}, 5000);
+// emparejar desde Ajustes
+document.addEventListener('click', async (e) => {
+  if (e.target.id === 'aj-cont-emparejar') {
+    const pc = $('aj-cont-pc').value.trim(); const codigo = $('aj-cont-cod').value.trim();
+    if (!pc || !/^\d{6}$/.test(codigo)) { toast(T('Escribe la dirección de la PC y el código de 6 números', 'Type the PC address and the 6-digit code')); return; }
+    guardarCfg({ continuarPC: pc });
+    try {
+      const r = await Cerebro.fetchN(pcBase() + '/continuar/emparejar', { method: 'POST', timeout: 6000, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ codigo, nombre: 'Galaxy' }) });
+      const j = await r.json().catch(() => null);
+      if (j && j.ok && j.token) { guardarCfg({ continuarToken: j.token }); $('aj-cont-estado').textContent = '💻 ' + T('Emparejado con', 'Paired with') + ' ' + (j.pc || pc); toast('🔄 ' + T('¡Emparejado con la PC!', 'Paired with the PC!')); }
+      else toast(T('Código incorrecto o vencido: pide uno nuevo en la PC', 'Wrong or expired code: get a new one on the PC'));
+    } catch { toast(T('No encuentro la PC en esa dirección (mismo WiFi y JARVIS Browser abierto)', "Can't find the PC at that address (same WiFi, JARVIS Browser open)")); }
+  }
+  if (e.target.id === 'aj-cont-olvidar') { guardarCfg({ continuarToken: '' }); $('aj-cont-estado').textContent = T('Sin emparejar', 'Not paired'); toast(T('PC olvidada', 'PC forgotten')); }
+});

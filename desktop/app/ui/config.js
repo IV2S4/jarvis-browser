@@ -5,7 +5,7 @@ const C = (accion, d) => window.navConfig.hacer(accion, d);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let cfg = {};
 const INTERRUPTORES = ['bloquearRastreadores', 'soloHttps', 'dnsSeguro', 'noRastrear', 'bloquearEmergentes', 'preguntarPermisos',
-  'guardarHistorial', 'borrarAlCerrar', 'preguntarDonde', 'avisarProgramas', 'controlJarvis', 'panelAlAbrir', 'bloquearAnuncios', 'conectarJarvis', 'vozRespuestas', 'modoGaming', 'pestanasVerticales', 'vozSiempre', 'subtitulosAuto', 'escaner', 'efectos', 'sonidosUI', 'monitorSistema', 'clipTelefono', 'cerebroLocal', 'localPrimero', 'localArrancar', 'escanerDescargas', 'terminal', 'centroMando', 'memoriaJarvis', 'gestos', 'gestosVista', 'camaraPausa', 'camaraGuardian', 'lanzarTelefono', 'memoriaNavegador', 'doblajeEnVivo', 'buscaLoQueVes', 'dictado', 'documentos', 'actualizarAuto'];
+  'guardarHistorial', 'borrarAlCerrar', 'preguntarDonde', 'avisarProgramas', 'controlJarvis', 'panelAlAbrir', 'bloquearAnuncios', 'conectarJarvis', 'vozRespuestas', 'modoGaming', 'pestanasVerticales', 'vozSiempre', 'subtitulosAuto', 'escaner', 'efectos', 'sonidosUI', 'monitorSistema', 'clipTelefono', 'cerebroLocal', 'localPrimero', 'localArrancar', 'escanerDescargas', 'terminal', 'centroMando', 'memoriaJarvis', 'gestos', 'gestosVista', 'camaraPausa', 'camaraGuardian', 'lanzarTelefono', 'memoriaNavegador', 'doblajeEnVivo', 'buscaLoQueVes', 'conversacionVivo', 'detectorEstafas', 'preguntaVideo', 'comparadorPrecios', 'investigador', 'continuarDispositivo', 'dictado', 'documentos', 'actualizarAuto'];
 const NOMBRE_PERMISO = { media: 'Cámara y micrófono', geolocation: 'Ubicación', notifications: 'Notificaciones', midi: 'Instrumentos MIDI',
   'clipboard-read': 'Leer el portapapeles', 'display-capture': 'Grabar la pantalla', hid: 'Dispositivos USB', serial: 'Puertos serie', usb: 'USB' };
 
@@ -366,3 +366,19 @@ function dibujarVig(lista) {
 async function pintarVig() { dibujarVig(await C('vigilancias')); }
 
 cargar();
+
+// ── 🔄 Continuar en el otro dispositivo: emparejar el teléfono con un código [09-nov] ──
+async function pintarContinuar() {
+  const r = await C('continuar-estado'); if (!r) return;
+  $('cont-info').textContent = r.telefonos.length ? r.telefonos.map((x) => '📱 ' + x.nombre).join(' · ') : 'Sin teléfonos emparejados';
+}
+$('cont-codigo').addEventListener('click', async () => {
+  const r = await C('continuar-codigo');
+  if (!r || !r.ok) { aviso('Enciende primero «Continuar en el otro dispositivo»'); return; }
+  $('cont-ver').hidden = false; $('cont-num').textContent = r.codigo;
+  $('cont-dir').textContent = ` · PC: ${r.ip || '?'}:${r.puerto} · vale 5 minutos`;
+  clearInterval(pintarContinuar.t); pintarContinuar.t = setInterval(pintarContinuar, 3000);
+  setTimeout(() => { clearInterval(pintarContinuar.t); $('cont-ver').hidden = true; }, 5 * 60000);
+});
+$('cont-olvidar').addEventListener('click', async () => { await C('continuar-olvidar'); $('cont-ver').hidden = true; pintarContinuar(); aviso('Teléfonos olvidados'); });
+pintarContinuar();

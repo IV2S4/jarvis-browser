@@ -41,7 +41,8 @@ $('panel-x').addEventListener('click', () => cerrarCapa('panel'));
 // ── mensajes ──
 function md(texto) {   // markdown sencillo y seguro (tablas, listas, negrita, enlaces) — igual que en la PC
   const enl = (s) => s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, (_m, t, u) => `<a data-url="${u}">${t}</a>`)
-    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, a, u) => `${a}<a data-url="${u}">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 34)}</a>`).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, a, u) => `${a}<a data-url="${u}">${u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 34)}</a>`).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\[(\d{1,2}(?::\d{2}){1,2})\](?!\()/g, (_m, t) => `<a class="ts" data-t="${t.split(':').reduce((s, x) => s * 60 + Number(x), 0)}">⏱ ${t}</a>`);   // 🎬 minutos del video [09-nov]
   const lineas = esc(texto).split('\n'); const out = []; let i = 0;
   while (i < lineas.length) {
     const l = lineas[i].trim();
@@ -60,16 +61,20 @@ function msg(clase, texto, html) {
   if (html) d.innerHTML = html; else d.textContent = texto;
   $('charla').appendChild(d); $('charla').scrollTop = $('charla').scrollHeight; return d;
 }
-$('charla').addEventListener('click', (ev) => { const a = ev.target.closest('a[data-url]'); if (a) { H('nueva', { url: a.dataset.url }); cerrarCapa('panel'); } });
+$('charla').addEventListener('click', (ev) => {
+  const t = ev.target.closest('a[data-t]'); if (t) { irAlMinuto(Number(t.dataset.t)); cerrarCapa('panel'); return; }   // ⏱ salta a ese momento del video
+  const a = ev.target.closest('a[data-url]'); if (a) { H('nueva', { url: a.dataset.url }); cerrarCapa('panel'); }
+});
 function saludo() { $('charla').innerHTML = ''; msg('j', T('Hola, señor. Pídame lo que quiera: buscar, abrir páginas, resumir o traducir esta página, o «¿qué ves?».', 'Hello, sir. Ask me anything: search, open pages, summarize or translate this page, or “what do you see?”.')); }
 window.alArrancar.push(async () => {
   saludo();
-  $('chips-chat').innerHTML = [['resumir', T('Resumir', 'Summarize')], ['traducir', T('Traducir página', 'Translate page')], ['ves', T('¿Qué ves?', 'What do you see?')], ['telefono', T('Al teléfono', 'Send to phone')], ['nuevo', T('Nuevo chat', 'New chat')]]
+  $('chips-chat').innerHTML = [['resumir', T('Resumir', 'Summarize')], ['traducir', T('Traducir página', 'Translate page')], ['ves', T('¿Qué ves?', 'What do you see?')], ['telefono', T('Al teléfono', 'Send to phone')], ['nuevo', T('Nuevo chat', 'New chat')], ['vivo', '🗣 ' + T('En vivo', 'Live')]]
     .map(([k, t]) => `<button data-q="${k}">${t}</button>`).join('');
   $('grid-pagina').innerHTML = [['resumir', '📝', T('Resumir', 'Summarize')], ['puntos', '📌', T('Puntos clave', 'Key points')], ['traducir', '🌐', T('Traducir', 'Translate')], ['leer', '🔊', T('Leer en voz alta', 'Read aloud')],
     ['ves', '👁', T('¿Qué ves?', 'What do you see?')], ['foto', '📸', T('Foto', 'Photo')], ['vigilar', '🔔', T('Vigilar precio', 'Watch price')], ['cambios', '👀', T('Vigilar cambios', 'Watch changes')],
     ['telefono', '📱', T('Al teléfono', 'Send to phone')], ['subtitulos', '💬', T('Subtítulos YT', 'YT subtitles')], ['pip', '▣', T('Video flotante', 'Floating video')], ['buscar', '🔎', T('Buscar', 'Find in page')],
-    ['doblar', '🗣', T('Doblar video', 'Dub video')], ['camara', '📸', T('¿Qué es esto?', 'What is this?')]]
+    ['doblar', '🗣', T('Doblar video', 'Dub video')], ['camara', '📸', T('¿Qué es esto?', 'What is this?')], ['capitulos', '🎬', T('Capítulos', 'Chapters')], ['precios', '💰', T('Comparar precios', 'Compare prices')],
+    ['a-pc', '💻', T('Seguir en la PC', 'Continue on PC')], ['de-pc', '📲', T('Traer de la PC', 'Get from PC')]]
     .map(([k, i, t]) => `<button data-a="${k}">${i}<span>${t}</span></button>`).join('');
 });
 $('chips-chat').addEventListener('click', (ev) => {
@@ -77,6 +82,7 @@ $('chips-chat').addEventListener('click', (ev) => {
   const k = b.dataset.q;
   if (k === 'resumir') resumirAqui(); else if (k === 'traducir') traducirPagina(); else if (k === 'ves') verPagina(); else if (k === 'telefono') enviarTelefono();
   else if (k === 'nuevo') { Cerebro.olvidar(); saludo(); }
+  else if (k === 'vivo') vivoEncender();   // 🗣 [09-nov]
 });
 $('grid-pagina').addEventListener('click', async (ev) => {
   const b = ev.target.closest('[data-a]'); if (!b) return; const k = b.dataset.a; const resp = $('pag-resp');
@@ -94,6 +100,10 @@ $('grid-pagina').addEventListener('click', async (ev) => {
   else if (k === 'buscar') { cerrarCapa('panel'); abrirBuscar(); }
   else if (k === 'doblar') { decir(T('Preparando el doblaje…', 'Starting dubbing…')); const r = DOB.id ? (pararDoblaje(), { ok: true, estado: 'off' }) : await doblaje(true, IDIOMA);
     decir(r.ok ? (r.estado === 'off' ? T('Doblaje apagado', 'Dubbing off') : r.estado === 'on' ? T('🗣 Doblaje en vivo encendido. Toca otra vez para apagarlo.', '🗣 Live dubbing on. Tap again to turn it off.') : T('Hay un anuncio: el doblaje empieza solo cuando termine.', 'An ad is playing: dubbing starts by itself when it ends.')) : String(r.error)); }
+  else if (k === 'a-pc') { const r = await seguirEnPC(); decir(r.ok ? T('💻 Listo: ya está abierto en la PC.', '💻 Done: it is open on the PC.') : String(r.error)); }
+  else if (k === 'de-pc') { const r = await traerDePC(); decir(r.ok ? T('📲 Abierto lo que tenías en la PC.', '📲 Opened what you had on the PC.') : String(r.error)); }
+  else if (k === 'capitulos') { pestPanel('chat'); chatear(T('Dame los capítulos de este video, cada uno con su minuto.', 'Give me the chapters of this video, each with its timestamp.')); }
+  else if (k === 'precios') { pestPanel('chat'); chatear(T('¿Este producto está más barato en otra tienda? Compara precios.', 'Is this product cheaper in another store? Compare prices.')); }
   else if (k === 'camara') { pestPanel('chat'); chatear(T('¿Qué es esto que te enseño con la cámara? Dime qué es y búscalo.', 'What is this I\'m showing you with the camera? Tell me what it is and search it.')); }
 });
 
@@ -264,6 +274,16 @@ async function herramienta(n, a) {
     case 'send_to_phone': return { salida: await enviarTelefono({ captura: a.what === 'screenshot', nota: a.note, silencioso: true }) };
     case 'youtube_subtitles': { const r = await enPaginaAsync(jsSubtitulos((a.language || IDIOMA).slice(0, 2), a.on !== false, false)); return { salida: r || { ok: false } }; }
     case 'watch_page': return { salida: await vigilarActual(a.what === 'changes' ? 'cambios' : 'precio', a.target_price) };
+    case 'check_scam': return { salida: await revisarEstafaAhora() };   // 🛡 [09-nov]
+    case 'deep_research': return { salida: investigarFondo(String(a.topic || '').slice(0, 300)) };   // 🕵 [09-nov]
+    case 'continue_on_pc': return { salida: await seguirEnPC() };   // 🔄 [09-nov]
+    case 'compare_prices': return { salida: await compararAhora(a.product) };   // 💰 [09-nov]
+    case 'ask_video': {   // 🎬 [09-nov]
+      if (cfg.preguntaVideo === false) return { salida: { ok: false, error: '«Ask the video» is turned off in Settings.' } };
+      if (!esYT(E.url)) return { salida: { ok: false, error: 'Open a YouTube video first.' } };
+      try { return { salida: { ok: true, respuesta: await Cerebro.preguntarVideo(E.url, a.question || 'Give me the chapters of this video.', IDIOMA), nota: 'Give this answer keeping every [MM:SS] timestamp exactly as written: they become buttons that jump to that moment.' } }; }
+      catch (e) { return { salida: { ok: false, error: String(e.message || e) } }; }
+    }
     case 'browser_memory': {   // 🧠 [09-nov]
       if (cfg.memoriaNavegador === false || !cfg.guardarHistorial) return { salida: { ok: false, error: 'Browser memory is turned off in Settings.' } };
       const l = buscarRecuerdos(a.query || ''); return { salida: { ok: true, total: l.length, paginas: l } };

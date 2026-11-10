@@ -236,7 +236,7 @@ Tip: start with ✌ and ☝ (scroll down and up), they're the easiest; switching
 | 👍 Thumbs up (1 s) | Call JARVIS (microphone) |
 | ✊ Closed fist (1.5 s) | Close tab |
 | 🤏 Pinch, then move your hand up or down | Zoom in / out |
-| ✊ then 🖐 Grab the page and throw it sideways opening your hand | Send the page to your phone (PC) |
+| 4 fingers up with the thumb folded over the palm, held 1 s | Send the page to your phone (PC) |
 
 ---
 
@@ -248,9 +248,15 @@ Each one has its own switch in **Settings › 🚀 Smart features** (on PC: Sett
 |---|---|---|
 | 💤 **Auto pause** | With the gesture camera on: get up and leave, and the video pauses; come back and it keeps playing. | PC and Android |
 | 👁 **Privacy guard** | With the gesture camera on: if someone else appears looking at your screen, the page is covered (and the address bar blurred) until they leave. | PC and Android |
-| 📲 **Throw to phone** | Close your hand ✊ as if grabbing the page and throw it sideways opening your hand 🖐: the page arrives on your phone via Telegram. | PC |
+| 📲 **Send to phone** | Raise your 4 fingers with the thumb folded over the palm and hold still for 1 second: the page arrives on your phone via Telegram. | PC |
 | 🧠 **Browser memory** | *"Jarvis, where did I see some red sneakers?"* — JARVIS finds the page by what it contained, not just its title. A short piece of each page's text is kept **only on your device** (never private tabs, banks, email or pages with password fields). Clearing history clears it too. | PC and Android |
 | 🗣 **Live dubbing** | On a video: *"Jarvis, dub this video into Spanish"* (or the 🗣 button on Android). JARVIS turns on the translated subtitles and reads them aloud with a **native voice of that language**, lowering the original sound. *"Jarvis, stop dubbing"* to stop. If an ad is playing it starts by itself when the ad ends. Works with videos that have subtitles (almost all of YouTube, even automatic ones). | PC and Android |
+| 🗣 **Live conversation** | Press **"🗣 Live"** in the JARVIS chat and talk like a phone call: JARVIS answers by voice instantly, you can interrupt it, and it can control the browser while you talk ("open YouTube", "is this store legit?"). Uses Gemini Live with your Gemini key. Headphones work best. | PC and Android |
+| 🛡 **Scam detector** | When you open an online store, JARVIS checks the domain age (public RDAP registry), brand imitation, risky domain endings, missing contact info and odd payment methods; if it adds up, the AI confirms and you get a warning before you buy. Ask anytime: *"is this store legit?"* | PC and Android |
+| 🎬 **Ask the video** | On a YouTube video ask *"at what minute does he explain…?"* or press **"🎬 Chapters"**: Gemini watches the video and timestamps appear as ⏱ buttons that jump to that moment. | PC and Android |
+| 💰 **Price comparison** | On a product page (Amazon, Walmart, Best Buy, eBay…) JARVIS looks for the same product in other stores with today's prices; if it's cheaper elsewhere you get a notice, and the chat shows photo cards of each store with price and savings. | PC and Android |
+| 🕵 **Background researcher** | *"Jarvis, research the best noise-cancelling headphones under $300"* — it runs several web searches while you keep browsing and delivers a report with a comparison table, recommendation and sources (new tab on PC, chat on Android). | PC and Android |
+| 🔄 **Continue on the other device** | Pair the phone with the PC once (6-digit code, home WiFi only). Then **💻 Continue on PC** / **📲 Get from PC** on the phone and **📱 Continue on phone** on the PC pass the page — and videos keep playing at the same minute. | PC and Android |
 | 📸 **Search what you see** | *"Jarvis, what is this?"* — on Android the back camera opens: point and tap 📸; on PC it takes a photo with your camera. JARVIS tells you what it is and searches for it. | PC and Android |
 
 **Native voices for dubbing:** JARVIS never reads a language with a foreign accent. On Android it uses the phone's Google voices. On PC it uses the Windows voice for that language — install it for free in Windows Settings › Time & language › Speech › Add voices — or, if not installed, your OpenAI or Gemini key. Without any of these it shows only the translated subtitles.
@@ -266,6 +272,9 @@ The browser has **no telemetry**: it sends no statistics and nothing about what 
 | Your chosen AI (Google, Anthropic or OpenAI) | Your question, plus the page's text or a screenshot when the question needs it | Only when you talk to JARVIS |
 | Your own Telegram bot | The page or clip you send | Only when you ask |
 | Your chosen AI | A camera photo, only when you ask "what is this?"; dubbing lines, only if you use your AI key for the voice | Only when you ask |
+| Google Gemini (your key) | Live conversation audio; product name and price for price comparison; research questions; YouTube video address for "ask the video" | Only when those features are used |
+| rdap.org | The domain name of an online store (to know its age) | When you open a store, if the scam detector is on |
+| Your own PC (home WiFi) | The page address and video minute, between your paired phone and PC | Only when you press continue |
 | VirusTotal (optional) | The downloaded file's hash, never the file | When a download finishes |
 | ip-api.com | The IP addresses of the page's servers, to draw the map | When you open the scanner |
 | Quad9 (optional) | The names of the sites you visit (secure DNS) | If you enable secure DNS |

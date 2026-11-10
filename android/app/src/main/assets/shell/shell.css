@@ -214,3 +214,33 @@ body.teclado .hoja.grande { height: calc(100vh - var(--ime) - var(--sat) - 20px)
 #camara-busca .x { width: 52px; height: 52px; font-size: 20px; }
 /* 👁 guardián de privacidad: la dirección también se difumina */
 body.guardia #dir, body.guardia #pest-lista { filter: blur(7px); }
+
+/* 🗣 conversación en vivo · 💰 precios [09-nov] */
+#vivo-barra { display: flex; align-items: center; gap: 12px; margin: 6px 0; padding: 10px 12px; border: 1px solid var(--cian); border-radius: 12px; background: rgba(var(--c1), .08); }
+#vivo-barra[hidden] { display: none; }
+#vivo-barra .vivo-txt { flex: 1; display: flex; flex-direction: column; }
+#vivo-barra .vivo-txt small { opacity: .7; font-size: 11px; }
+#vivo-barra .vivo-fin { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--rojo); color: var(--rojo); background: transparent; }
+.orbe-vivo { position: relative; width: 34px; height: 34px; }
+.orbe-vivo i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--cian); animation: vivo-pulso 1.8s ease-out infinite; }
+.orbe-vivo i:nth-child(2) { animation-delay: .6s; } .orbe-vivo i:nth-child(3) { animation-delay: 1.2s; }
+@keyframes vivo-pulso { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.15); opacity: 0; } }
+#charla a.ts { display: inline-block; padding: 0 6px; margin: 0 2px; border: 1px solid var(--cian); border-radius: 8px; }
+.msg.precios .cab { font-weight: 700; margin-bottom: 8px; display: flex; flex-direction: column; }
+.msg.precios .cab small { font-weight: 400; opacity: .7; font-size: 11px; }
+.msg.precios .tarjetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.msg.precios .tarjeta { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 1px solid var(--borde); border-radius: 10px; color: inherit; text-decoration: none; }
+.msg.precios .tarjeta.barata { border-color: var(--verde); box-shadow: 0 0 10px rgba(61,255,181,.25); }
+.msg.precios .foto { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 8px; overflow: hidden; font-size: 28px; }
+.msg.precios .foto img { width: 100%; height: 100%; object-fit: contain; }
+.msg.precios .pr { font-weight: 700; color: var(--cian); }
+.msg.precios .tarjeta.barata .pr { color: var(--verde); }
+.msg.precios small { font-size: 10px; opacity: .8; text-align: center; }
+#precio-barra { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(61,255,181,.12); border-bottom: 1px solid var(--verde); font-size: 12px; }
+#precio-barra[hidden] { display: none; }
+#precio-barra span { flex: 1; }
+#precio-barra button { border: 1px solid var(--verde); background: transparent; color: var(--texto); border-radius: 8px; padding: 4px 8px; }
+#pc-barra { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(var(--c1), .12); border-bottom: 1px solid var(--cian); font-size: 12px; }
+#pc-barra[hidden] { display: none; }
+#pc-barra span { flex: 1; }
+#pc-barra button { border: 1px solid var(--cian); background: transparent; color: var(--texto); border-radius: 8px; padding: 4px 8px; }

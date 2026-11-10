@@ -345,6 +345,11 @@ const HERRAMIENTAS = [
   { nombre: 'browser_memory', desc: 'Search the user\'s browser memory: the text of pages they visited before (not just titles). Use it when the user asks where they saw something ("where did I see some red sneakers?"). Put keywords in BOTH the user\'s language and English, with synonyms (e.g. "tenis rojos zapatillas red sneakers shoes"). Answer with title, when, and full URL of the best matches.', params: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
   { nombre: 'live_dubbing', desc: 'Live dubbing of the video in the current page: reads its subtitles aloud translated into a language (code like es, en) with a native voice, and lowers the original sound. on=false turns it off. Use for "dub this video", "dóblalo al español", "quita el doblaje".', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'look_through_camera', desc: 'Open the phone\'s back camera so the user can photograph a real object (not the page); you receive the photo. Use it for "what is this?", "¿qué es esto?", "busca esto", "look at this". Then identify it (brand/model if visible) and use web_search to find it when useful.' },
+  { nombre: 'deep_research', desc: 'Start a deep web research in the background on a topic (several searches + a written report with a comparison table and sources, shown in the chat when ready, 1–3 min). Use for "investiga…", "research…", "compare the best X for me".', params: { type: 'object', properties: { topic: { type: 'string', description: 'the full research request in the user\'s words' } }, required: ['topic'] } },
+  { nombre: 'continue_on_pc', desc: 'Open what the user is watching on the phone (page and video minute) on their paired PC, to continue there. Use for "sigo en la PC", "pásalo a la computadora", "continue on my PC".' },
+  { nombre: 'check_scam', desc: 'Check whether the current store/page is a scam: domain age, brand imitation, payment methods and an AI analysis. Use for "is this store legit?", "¿esta tienda es confiable?".' },
+  { nombre: 'compare_prices', desc: 'Find the same product of the current page cheaper in other big stores (with today\'s prices); photo cards of each store appear in the chat. Use for "is it cheaper elsewhere?", "compara precios".', params: { type: 'object', properties: { product: { type: 'string', description: 'only if the page is not a product page' } } } },
+  { nombre: 'ask_video', desc: 'Ask anything about the YouTube video open in the current tab (Gemini watches it): "in which minute does he explain X?", "give me the chapters". The answer has [MM:SS] timestamps that jump to that moment.', params: { type: 'object', properties: { question: { type: 'string' } }, required: ['question'] } },
   { nombre: 'youtube_subtitles', desc: 'On a YouTube video, turn on live subtitles translated into a language (code like es, en, fr), or turn them off.', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'save_game_clip', desc: 'Save the last moments of the game the user is playing as a video clip (NVIDIA Instant Replay or Xbox Game Bar) and send it to their phone. Use for "clip that", "save that play".' },
   { nombre: 'find_in_page', desc: 'Highlight a word or phrase in the page.', params: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] } },
@@ -352,7 +357,7 @@ const HERRAMIENTAS = [
 const ETIQUETAS = { open_url: 'Abriendo', web_search: 'Buscando', read_page: 'Leyendo la página', see_page: 'Mirando la página', click: 'Haciendo clic', type_text: 'Escribiendo',
   scroll: 'Desplazando', navigate: 'Navegando', tabs: 'Pestañas', walkthrough_page: 'Recorriendo la página', summarize_page: 'Resumiendo', translate_page: 'Traduciendo la página',
   read_aloud: 'Leyendo en voz alta', browser_history: 'Mirando el historial', list_tabs: 'Revisando las pestañas', read_tab: 'Leyendo otra pestaña',
-  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', youtube_subtitles: 'Subtítulos', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
+  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', youtube_subtitles: 'Subtítulos', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', check_scam: 'Revisando si es estafa', deep_research: 'Investigando', continue_on_pc: 'Pasando a la PC', compare_prices: 'Comparando precios', ask_video: 'Mirando el video', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
 
 let historia = [];
 let turno = 0;
@@ -421,5 +426,62 @@ REMEMBER: whatever language the user writes in, your reply is in ${idiomaDe(h.co
   return { texto: 'I did as much as I could in one go, sir (30 steps). Shall I continue?' };
 }
 
+// ═══ [09-nov] 🎬 pregúntale al video · 💰 comparador de precios · 🛡 detector de estafas (igual que en la PC) ═══
+async function preguntarVideo(url, pregunta, cod) {
+  if (!cargarLlaves().gemini) { const e = new Error('«Ask the video» needs the Gemini key.'); e.sinGemini = true; throw e; }
+  const pedido = `${pregunta}\n\nAnswer in ${idiomaDe(cod)}, short and clear. Every time you mention a moment of the video, write its exact timestamp in square brackets like [MM:SS] (or [H:MM:SS] for long videos) — they become buttons that jump to that moment. If asked for chapters, give a short list where each line starts with its [MM:SS] timestamp and a short title.`;
+  const r = await pensar({ sistema: sistemaBase(cod), soloCon: ['gemini'], historia: [{ rol: 'user', imagenes: [{ uri: url }], texto: pedido }], max: 1500 }, ['gemini']);
+  return r.texto;
+}
+async function geminiConBusqueda(texto, max = 1500) {
+  const k = cargarLlaves(); if (!k.gemini) { const e = new Error('sin-gemini'); e.sinGemini = true; throw e; }
+  let ultimo = null;
+  for (const modelo of ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']) {   // si uno no tiene cuota, el siguiente
+    try {
+      const j = await pedir(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, { 'x-goog-api-key': k.gemini },
+        { contents: [{ role: 'user', parts: [{ text: texto }] }], tools: [{ google_search: {} }], generationConfig: { maxOutputTokens: max, temperature: 0.2 } }, 60000);
+      const t = (j?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+      if (t) return t;
+    } catch (e) { ultimo = e; }
+  }
+  throw ultimo || new Error('no answer');
+}
+// igual que geminiConBusqueda pero también devuelve las fuentes (para el investigador)
+async function buscarWeb(texto, max = 2500, intento = 0) {
+  const k = cargarLlaves(); if (!k.gemini) { const e = new Error('sin-gemini'); e.sinGemini = true; throw e; }
+  let ultimo = null; let cuota = false;
+  for (const modelo of ['gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest']) {
+    try {
+      const j = await pedir(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, { 'x-goog-api-key': k.gemini },
+        { contents: [{ role: 'user', parts: [{ text: texto }] }], tools: [{ google_search: {} }], generationConfig: { maxOutputTokens: max, temperature: 0.3 } }, 90000);
+      const c = j?.candidates?.[0]; const t = (c?.content?.parts || []).map((p) => p.text || '').join('');
+      const fuentes = (c?.groundingMetadata?.groundingChunks || []).map((g) => g.web).filter((w) => w && w.uri).map((w) => ({ titulo: w.title || w.uri, url: w.uri }));
+      if (!fuentes.length) for (const m of t.matchAll(/https?:\/\/[^\s)\]>"']+/g)) { const u = m[0].replace(/[.,;]+$/, ''); if (!fuentes.some((f) => f.url === u)) fuentes.push({ titulo: u.replace(/^https?:\/\/(www\.)?/, '').slice(0, 80), url: u }); }
+      if (t) return { texto: t, fuentes };
+    } catch (e) { ultimo = e; if (e.status === 429) cuota = true; }
+  }
+  if (cuota && intento < 2) { await new Promise((ok) => setTimeout(ok, 25000)); return buscarWeb(texto, max, intento + 1); }
+  throw ultimo || new Error('no answer');
+}
+const sacarJson = (t) => { const s = String(t || '').replace(/```(?:json)?/g, ''); return JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}') + 1)); };
+async function compararPrecios(p) {
+  const t = await geminiConBusqueda(`Search the web for the CURRENT price of exactly this product in other big online stores${p.pais ? ` in ${p.pais}` : ' in the United States'} (Amazon, Walmart, Best Buy, Target, eBay new, Costco, the brand's own store…), excluding ${p.tienda}.
+Product: ${p.nombre}${p.marca ? `\nBrand: ${p.marca}` : ''}${p.modelo ? `\nModel/SKU/GTIN: ${p.modelo}` : ''}
+Price here at ${p.tienda}: ${p.precio} ${p.moneda || 'USD'}${p.estado === 'used' ? ' (this one is USED; compare with NEW prices)' : ''}
+Only the SAME product (same model, size, capacity, condition new). Reply ONLY with JSON: {"ofertas":[{"tienda":"Walmart","precio":123.45,"moneda":"USD","url":"https://…"}]} — up to 5, cheapest first, real product page URLs; {"ofertas":[]} if none found.`, 1200);
+  const j = sacarJson(t);
+  return (Array.isArray(j.ofertas) ? j.ofertas : []).filter((o) => o && o.tienda && Number(o.precio) > 0 && /^https:\/\//.test(o.url || ''))
+    .map((o) => ({ tienda: String(o.tienda).slice(0, 40), precio: Number(o.precio), moneda: String(o.moneda || p.moneda || 'USD').slice(0, 4), url: String(o.url) }));
+}
+async function analizarEstafa(d, cod) {
+  const r = await pensar({ sistema: 'You are an online-fraud analyst. Be calibrated: well-known legitimate stores are safe; do not cry wolf.', historia: [{ rol: 'user', texto:
+`Is this online store/page a likely scam? Signals collected by the browser:
+${JSON.stringify(d.senales)}
+Page: ${d.titulo} — ${d.url}
+Text excerpt: ${String(d.texto || '').slice(0, 5000)}
+Reply ONLY with JSON: {"riesgo":"bajo|medio|alto","resumen":"one short sentence in ${idiomaDe(cod)}","motivos":["up to 4 short reasons in ${idiomaDe(cod)}"]}` }], max: 500 });
+  return sacarJson(r.texto);
+}
+
 window.Cerebro = { PROVEEDORES, SECRETOS, ponerPuestas, estadoLlaves, hayAlguna, pensar, preguntarPagina, describirPagina, describirParte, resumir, traducirLista,
-  transcribir, voz, chat, olvidar, parar, diagnostico, ultimo: () => ultimoUsado, idiomaDe, NOMBRE_IDIOMA, configurarLocal, localVivo, sinMarkdown };
+  transcribir, voz, chat, olvidar, parar, diagnostico, ultimo: () => ultimoUsado, idiomaDe, NOMBRE_IDIOMA, configurarLocal, localVivo, sinMarkdown, preguntarVideo, compararPrecios, analizarEstafa, sistemaBase, fetchN, HERRAMIENTAS, buscarWeb };

@@ -411,3 +411,31 @@ body.guardia #pestanas, body.guardia #direccion { filter: blur(7px); }
 #doc-barra button:hover { border-color: rgb(var(--c1)); background: rgba(var(--c1), .18); color: #fff; }
 #act-chip { color: #3dffb5; letter-spacing: 1px; font: inherit; font-size: 11px; border: 1px solid rgba(61, 255, 181, .5); border-radius: 10px; padding: 0 8px; background: rgba(61, 255, 181, .08); cursor: pointer; animation: parpadeo 2s ease-in-out infinite; }
 #act-chip[hidden] { display: none; }
+
+/* 🗣 conversación en vivo [09-nov] */
+#vivo-barra { display: flex; align-items: center; gap: 12px; margin: 6px 0 8px; padding: 10px 12px; border: 1px solid var(--cian); border-radius: 12px; background: rgba(56, 214, 255, .07); box-shadow: 0 0 18px rgba(56, 214, 255, .15) inset; }
+#vivo-barra[hidden] { display: none; }
+#vivo-barra .vivo-txt { flex: 1; display: flex; flex-direction: column; }
+#vivo-barra .vivo-txt small { opacity: .7; font-size: 11px; }
+#vivo-barra .vivo-fin { width: 34px; height: 34px; border-radius: 50%; border: 1px solid #ff5c7a; color: #ff5c7a; background: transparent; cursor: pointer; }
+.orbe-vivo { position: relative; width: 34px; height: 34px; }
+.orbe-vivo i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--cian); animation: vivo-pulso 1.8s ease-out infinite; }
+.orbe-vivo i:nth-child(2) { animation-delay: .6s; } .orbe-vivo i:nth-child(3) { animation-delay: 1.2s; }
+#vivo-barra.habla .orbe-vivo i { animation-duration: .7s; border-color: #ffc94d; }
+@keyframes vivo-pulso { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.15); opacity: 0; } }
+#c-vivo.activo { border-color: #ff5c7a; color: #ff5c7a; }
+#charla2 a.ts { display: inline-block; padding: 0 6px; margin: 0 2px; border: 1px solid var(--cian); border-radius: 8px; cursor: pointer; font-variant-numeric: tabular-nums; }
+
+/* 🖼 tarjetas de comparación de precios [09-nov] */
+.msg.precios { max-width: 100%; }
+.msg.precios .cab { font-weight: 700; margin-bottom: 8px; display: flex; flex-direction: column; }
+.msg.precios .cab small { font-weight: 400; opacity: .7; font-size: 11px; }
+.msg.precios .tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.msg.precios .tarjeta { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 1px solid var(--borde); border-radius: 10px; cursor: pointer; text-decoration: none; color: inherit; background: rgba(255,255,255,.03); }
+.msg.precios .tarjeta.aqui { cursor: default; opacity: .85; }
+.msg.precios .tarjeta.barata { border-color: #3dffb5; box-shadow: 0 0 10px rgba(61,255,181,.25); }
+.msg.precios .foto { width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 8px; overflow: hidden; font-size: 28px; }
+.msg.precios .foto img { width: 100%; height: 100%; object-fit: contain; }
+.msg.precios .pr { font-weight: 700; color: var(--cian); }
+.msg.precios .tarjeta.barata .pr { color: #3dffb5; }
+.msg.precios small { font-size: 10px; opacity: .8; text-align: center; }
