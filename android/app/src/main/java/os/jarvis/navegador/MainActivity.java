@@ -115,6 +115,7 @@ public class MainActivity extends Activity {
     // ═══════════════════════════ arranque ═══════════════════════════
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        vivo = new Vivo(this);   // 🗣 conversación en vivo [09-nov]
         den = getResources().getDisplayMetrics().density;
         WebView.setWebContentsDebuggingEnabled(false);   // 🔒 nadie puede espiar las páginas por USB
         boveda = new Boveda(this); bloqueo = new Bloqueo(this);
@@ -843,9 +844,9 @@ public class MainActivity extends Activity {
         detenida = true; ui.removeCallbacks(vigiaPip);
         if (System.currentTimeMillis() - finPip < 2000) pipEnPagina("window.__jarvisPip.pausar()");   // cerraste la ventanita con la X → el video se para
     }
-    final Vivo vivo = new Vivo();   // 🗣 conversación en vivo [09-nov]
+    Vivo vivo;   // se crea en onCreate (necesita el contexto)   // 🗣 conversación en vivo [09-nov]
     @Override protected void onDestroy() {
-        vivo.parar();
+        if (vivo != null) vivo.parar();
         if (receptorPip != null) try { unregisterReceiver(receptorPip); } catch (Exception ignored) { }
         super.onDestroy();
     }

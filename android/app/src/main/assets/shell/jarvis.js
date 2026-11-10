@@ -275,6 +275,14 @@ async function herramienta(n, a) {
     case 'youtube_subtitles': { const r = await enPaginaAsync(jsSubtitulos((a.language || IDIOMA).slice(0, 2), a.on !== false, false)); return { salida: r || { ok: false } }; }
     case 'watch_page': return { salida: await vigilarActual(a.what === 'changes' ? 'cambios' : 'precio', a.target_price) };
     case 'check_scam': return { salida: await revisarEstafaAhora() };   // 🛡 [09-nov]
+    case 'play_video': return { salida: await ponerVideo(a.query, a.n) };   // ▶ [09-nov]
+    case 'media_control': {   // ⏯ [09-nov]
+      const acc = String(a.action || 'toggle'); const s = Number(a.seconds) || 10;
+      const r = await enPagina(`(() => { const vs = [...document.querySelectorAll('video')]; const v = vs.find((x) => !x.paused) || vs.find((x) => x.offsetWidth > 0) || vs[0]; if (!v) return { ok: false, error: 'No video on this page' };
+        const a = ${JSON.stringify(acc)}; if (a === 'play') v.play(); else if (a === 'pause') v.pause(); else if (a === 'forward') v.currentTime += ${s}; else if (a === 'back') v.currentTime = Math.max(0, v.currentTime - ${s}); else if (a === 'mute') v.muted = !v.muted; else { v.paused ? v.play() : v.pause(); }
+        return { ok: true, playing: !v.paused, at: Math.floor(v.currentTime) }; })()`);
+      return { salida: r || { ok: false } };
+    }
     case 'deep_research': return { salida: investigarFondo(String(a.topic || '').slice(0, 300)) };   // 🕵 [09-nov]
     case 'continue_on_pc': return { salida: await seguirEnPC() };   // 🔄 [09-nov]
     case 'compare_prices': return { salida: await compararAhora(a.product) };   // 💰 [09-nov]

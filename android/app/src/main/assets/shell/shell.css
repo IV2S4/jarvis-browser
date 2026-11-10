@@ -244,3 +244,6 @@ body.guardia #dir, body.guardia #pest-lista { filter: blur(7px); }
 #pc-barra[hidden] { display: none; }
 #pc-barra span { flex: 1; }
 #pc-barra button { border: 1px solid var(--cian); background: transparent; color: var(--texto); border-radius: 8px; padding: 4px 8px; }
+
+.msg.precios .web { display: flex; align-items: center; gap: 4px; font-size: 10px; opacity: .85; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.msg.precios .web img { width: 12px; height: 12px; border-radius: 2px; }

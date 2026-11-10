@@ -3,7 +3,7 @@
 // JARVIS contesta con voz al momento y lo puedes interrumpir. El micrófono va en trocitos al proceso principal
 // (que habla con Gemini Live); aquí solo se graba, se reproduce la voz y se pintan las frases.
 // 🎬 También el botón «Capítulos» de los videos de YouTube.
-const V = { on: false, listo: false, ctxIn: null, ctxOut: null, stream: null, fuente: null, proc: null, sonando: [], t: 0, tu: null, el: null, barra: null };
+const V = { fuertes: 0, on: false, listo: false, ctxIn: null, ctxOut: null, stream: null, fuente: null, proc: null, sonando: [], t: 0, tu: null, el: null, barra: null };
 
 function vivoBarra() {
   if (V.barra) return V.barra;
@@ -37,8 +37,11 @@ async function vivoMicro() {
     if (!V.listo) return;
     const f = e.inputBuffer.getChannelData(0); const i16 = new Int16Array(f.length); let suma = 0;
     for (let k = 0; k < f.length; k++) { const x = Math.max(-1, Math.min(1, f[k])); i16[k] = x * 0x7fff; suma += x * x; }
-    // mientras JARVIS habla por los parlantes, solo pasa tu voz si es clara (para que no se interrumpa con su propio eco)
-    if (V.sonando.length && Math.sqrt(suma / f.length) < 0.045) i16.fill(0);
+    // mientras JARVIS habla (y medio segundo después) el micrófono manda silencio, para que no se oiga a sí mismo por las bocinas;
+    // si TÚ hablas fuerte y claro unos 300 ms, pasa tu voz y lo interrumpes [09-nov]
+    const habla = V.ctxOut && V.ctxOut.currentTime < V.t + 0.5;
+    if (habla) { if (Math.sqrt(suma / f.length) > 0.12) V.fuertes++; else V.fuertes = 0; if (V.fuertes < 3) i16.fill(0); }
+    else V.fuertes = 0;
     H('vivo-audio', b64DeInt16(i16));
   };
   V.fuente.connect(V.proc); V.proc.connect(V.ctxIn.destination);
@@ -55,7 +58,7 @@ function vivoSonar(b64) {
 }
 function vivoCallar() { for (const s of V.sonando) { try { s.stop(); } catch { /* */ } } V.sonando = []; V.t = 0; }
 function vivoApagar(error) {
-  const estaba = V.on; V.on = false; V.listo = false;
+  const estaba = V.on; V.on = false; V.listo = false; V.reconex = 0;
   H('vivo', false); vivoCallar();
   if (V.proc) { try { V.proc.disconnect(); V.fuente.disconnect(); } catch { /* */ } }
   if (V.stream) V.stream.getTracks().forEach((t) => t.stop());   // apaga el micrófono
@@ -69,12 +72,16 @@ function vivoApagar(error) {
 window.nav.en('vivo', async (ev) => {
   if (!V.on) return;
   if (ev.estado === 'listo') {
-    await vivoMicro(); if (!V.on) return;
-    V.listo = true; $('c-vivo').classList.add('activo'); sonido('pestana');
+    if (!V.stream) { await vivoMicro(); if (!V.on) return; }
+    const reconectado = V.reconex > 0 && V.stream; V.listo = true; $('c-vivo').classList.add('activo'); if (!reconectado) sonido('pestana');
     vivoEstado(T('Te escucho…', 'Listening…'), T('Habla cuando quieras · ■ para terminar', 'Speak any time · ■ to end'));
     return;
   }
-  if (ev.estado === 'fin' || ev.estado === 'error') { vivoApagar(ev.error); return; }
+  if (ev.estado === 'fin' || ev.estado === 'error') {
+    // se cortó solo (no pulsaste ■): reconecta hasta 3 veces sin que tengas que hacer nada [09-nov]
+    if (ev.inesperado && V.on && (V.reconex = (V.reconex || 0) + 1) <= 3) { V.listo = false; vivoEstado(T('Reconectando…', 'Reconnecting…')); const r = await H('vivo', true); if (r && r.ok) return; }
+    vivoApagar(ev.error || (ev.inesperado && ev.motivo ? T('Gemini cortó la conversación: ', 'Gemini ended the conversation: ') + ev.motivo : '')); return;
+  }
   if (ev.interrumpido) { vivoCallar(); V.el = null; vivoEstado(T('Te escucho…', 'Listening…')); }
   if (ev.audio) vivoSonar(ev.audio);
   if (ev.tu) { if (!V.tu) V.tu = msg2('u', ''); V.tu.textContent += ev.tu; V.el = null; }

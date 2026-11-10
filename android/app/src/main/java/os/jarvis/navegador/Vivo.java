@@ -1,7 +1,10 @@
 package os.jarvis.navegador;
 
 import android.media.AudioAttributes;
+import android.content.Context;
+import android.media.AudioDeviceInfo;
 import android.media.AudioFormat;
+import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
@@ -43,8 +46,10 @@ class Vivo {
     private volatile boolean activo, listo;
     private AudioRecord rec; private AudioTrack pista;
     private final LinkedBlockingQueue<byte[]> cola = new LinkedBlockingQueue<>();
-    private volatile long sonandoHasta;
+    private volatile long escritos, colaHasta;   // cuadros de voz enviados al parlante · hasta cuándo se considera que JARVIS habla
     private Oyente oyente;
+    private final AudioManager am; private int modoAntes = AudioManager.MODE_NORMAL;
+    Vivo(Context c) { am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE); }
 
     synchronized void empezar(String llave, String sistema, JSONArray herramientas, Oyente o) {
         parar();
@@ -96,7 +101,8 @@ class Vivo {
             if (op == 8) {   // cierre
                 String razon = datos.length > 2 ? new String(datos, 2, datos.length - 2, StandardCharsets.UTF_8) : "";
                 if (!listo && activo) { cerrarSocket(); conectar(llave, sistema, herramientas, intento + 1); return; }
-                avisar("estado", "fin", "error", razon.matches("(?is).*(quota|exhausted|429).*") ? "Se acabó la cuota gratis de Gemini Live por hoy." : "");
+                try { if (oyente != null) oyente.evento(new JSONObject().put("estado", "fin").put("inesperado", true).put("motivo", razon.length() > 160 ? razon.substring(0, 160) : razon)
+                        .put("error", razon.matches("(?is).*(quota|exhausted|429).*") ? "Se acabó la cuota gratis de Gemini Live por hoy." : "")); } catch (Exception ignored) { }
                 parar(); return;
             }
             if (op == 9) { enviarMarco(10, datos); continue; }   // ping → pong
@@ -106,7 +112,7 @@ class Vivo {
             String txt = mensaje.toString("UTF-8"); mensaje.reset();
             procesar(new JSONObject(txt), modelo);
         }
-        if (activo) { avisar("estado", "fin", "error", listo ? "" : "Gemini cerró la conexión."); parar(); }
+        if (activo) { try { if (oyente != null) oyente.evento(new JSONObject().put("estado", "fin").put("inesperado", listo).put("error", listo ? "" : "Gemini cerró la conexión.")); } catch (Exception ignored) { } parar(); }
     }
 
     private void procesar(JSONObject m, String modelo) throws Exception {
@@ -145,7 +151,28 @@ class Vivo {
     }
 
     // ── audio ──
+    // modo «llamada»: así funciona la cancelación de eco del teléfono (y que JARVIS no se oiga a sí mismo) [09-nov]
+    private void modoLlamada(boolean on) {
+        try {
+            if (on) {
+                modoAntes = am.getMode(); am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                if (android.os.Build.VERSION.SDK_INT >= 31) { for (AudioDeviceInfo d : am.getAvailableCommunicationDevices()) if (d.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) { boolean audif = false;
+                    for (AudioDeviceInfo x : am.getAvailableCommunicationDevices()) { int t = x.getType(); if (t == AudioDeviceInfo.TYPE_WIRED_HEADSET || t == AudioDeviceInfo.TYPE_WIRED_HEADPHONES || t == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || t == AudioDeviceInfo.TYPE_BLE_HEADSET || t == AudioDeviceInfo.TYPE_USB_HEADSET) audif = true; }
+                    if (!audif) am.setCommunicationDevice(d); break; } }
+                else am.setSpeakerphoneOn(true);
+            } else {
+                if (android.os.Build.VERSION.SDK_INT >= 31) am.clearCommunicationDevice(); else am.setSpeakerphoneOn(false);
+                am.setMode(modoAntes);
+            }
+        } catch (Exception ignored) { }
+    }
+    private boolean jarvisHabla() {
+        AudioTrack p = pista; long ahora = System.currentTimeMillis();
+        try { if (p != null && escritos - (p.getPlaybackHeadPosition() & 0xffffffffL) > 0) colaHasta = ahora + 600; } catch (Exception ignored) { }
+        return ahora < colaHasta;
+    }
     private void empezarAudio() {
+        modoLlamada(true);
         int tamIn = Math.max(AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), 6400);
         try {
             rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, 16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, tamIn);
@@ -155,16 +182,19 @@ class Vivo {
         } catch (SecurityException e) { avisar("estado", "fin", "error", "Sin permiso para el micrófono."); parar(); return; }
         int tamOut = Math.max(AudioTrack.getMinBufferSize(24000, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), 9600);
         pista = new AudioTrack.Builder()
-                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANT).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 .setAudioFormat(new AudioFormat.Builder().setSampleRate(24000).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
                 .setBufferSizeInBytes(tamOut).setTransferMode(AudioTrack.MODE_STREAM).build();
         pista.play();
         new Thread(() -> {   // micrófono → Gemini (trozos de 100 ms)
-            byte[] buf = new byte[3200];
+            byte[] buf = new byte[3200]; int fuertes = 0;
             while (activo && rec != null) {
                 int n; try { AudioRecord r = rec; if (r == null) break; n = r.read(buf, 0, buf.length); } catch (Exception e) { break; } if (n <= 0) continue;
                 // mientras JARVIS habla, solo pasa tu voz si es clara (para que no se interrumpa con su propio eco)
-                if (System.currentTimeMillis() < sonandoHasta && rms(buf, n) < 1400) java.util.Arrays.fill(buf, 0, n, (byte) 0);
+                // mientras JARVIS habla (y medio segundo después) el micrófono manda silencio, para que no se oiga a sí mismo;
+                // si TÚ hablas fuerte y claro unos 300 ms, pasa tu voz y lo interrumpes
+                if (jarvisHabla()) { if (rms(buf, n) > 5000) fuertes++; else fuertes = 0; if (fuertes < 3) java.util.Arrays.fill(buf, 0, n, (byte) 0); }
+                else fuertes = 0;
                 try { enviar("{\"realtimeInput\":{\"audio\":{\"mimeType\":\"audio/pcm;rate=16000\",\"data\":\"" + Base64.encodeToString(buf, 0, n, Base64.NO_WRAP) + "\"}}}"); } catch (Exception e) { break; }
             }
         }, "vivo-micro").start();
@@ -172,14 +202,14 @@ class Vivo {
             while (activo) {
                 try {
                     byte[] pcm = cola.take(); if (!activo || pista == null) break;
-                    sonandoHasta = System.currentTimeMillis() + pcm.length / 48 + 400;
+                    escritos += pcm.length / 2; colaHasta = System.currentTimeMillis() + pcm.length / 48 + 600;
                     pista.write(pcm, 0, pcm.length);
                 } catch (InterruptedException e) { break; } catch (Exception ignored) { }
             }
         }, "vivo-voz").start();
     }
     private static double rms(byte[] b, int n) { double s = 0; int k = 0; for (int i = 0; i + 1 < n; i += 2) { short v = (short) ((b[i] & 0xFF) | (b[i + 1] << 8)); s += v * (double) v; k++; } return k == 0 ? 0 : Math.sqrt(s / k); }
-    private void callar() { cola.clear(); sonandoHasta = 0; try { if (pista != null) { pista.pause(); pista.flush(); pista.play(); } } catch (Exception ignored) { } }
+    private void callar() { cola.clear(); try { if (pista != null) { pista.pause(); pista.flush(); escritos = 0; pista.play(); } } catch (Exception ignored) { } colaHasta = System.currentTimeMillis() + 300; }
 
     // ── WebSocket ──
     private String leerCabecera(InputStream is) throws Exception {
@@ -208,7 +238,8 @@ class Vivo {
         try { if (out != null) enviarMarco(8, new byte[] { 0x03, (byte) 0xE8 }); } catch (Exception ignored) { }
         cerrarSocket();
         try { if (rec != null) { rec.stop(); rec.release(); } } catch (Exception ignored) { } rec = null;
-        try { if (pista != null) { pista.stop(); pista.release(); } } catch (Exception ignored) { } pista = null;
+        try { if (pista != null) { pista.stop(); pista.release(); } } catch (Exception ignored) { } pista = null; escritos = 0;
+        if (estaba) modoLlamada(false);
         cola.clear(); cola.offer(new byte[0]);   // despierta al hilo de la voz para que termine
         void_(estaba);
     }

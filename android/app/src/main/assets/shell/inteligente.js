@@ -283,10 +283,18 @@ async function revisarEstafaAhora() {
 }
 async function compararAhora(producto) {
   const d = await enPagina(JS_TIENDA); const host = hostDe(E.url);
-  const pr = (d && d.producto) || (producto ? { nombre: producto, precio: 0 } : null);
-  if (!pr) return { ok: false, error: 'This page does not look like a product page. Ask the user which product.' };
+  const titulo = String((d && d.titulo) || E.titulo || '').replace(/\s+[-–|]\s+(Google Search|Buscar con Google|Búsqueda de Google|Bing|DuckDuckGo).*$/i, '').trim();   // también desde Google [09-nov]
+  const pr = (d && d.producto) || ((producto || titulo) ? { nombre: producto || titulo, precio: 0 } : null);
+  if (!pr) return { ok: false, error: 'Ask the user which product.' };
   try {
-    const ofertas = await Cerebro.compararPrecios({ ...pr, tienda: host });
+    let ofertas = []; let fallo = null;
+    // 1) los resultados de Google (rápido, sin la cuota de búsqueda de Gemini, y con la foto de cada tienda) [09-nov]
+    if (!/google\.|bing\.com/.test(E.url || '')) { await H('nueva', { url: 'https://www.google.com/search?q=' + encodeURIComponent(pr.nombre + ' price') }); for (let i = 0; i < 18; i++) { await pausa(500); if (/google\./.test(E.url || '') && (await enPagina('document.readyState')) === 'complete') break; } await pausa(1500); }
+    const res = await enPagina(JS_RESULTADOS);
+    if (res && res.enlaces && res.enlaces.length) { try { ofertas = await Cerebro.ofertasDeResultados(pr, res.enlaces); } catch (e) { fallo = e; } }
+    // 2) si no salió nada: la búsqueda de Gemini (con tiempo límite)
+    if (!ofertas.length) { try { ofertas = await Promise.race([Cerebro.compararPrecios({ ...pr, tienda: host }), pausa(25000).then(() => [])]); } catch (e) { fallo = e; } }
+    if (!ofertas.length && fallo) throw fallo;
     if (ofertas.length) tarjetasPrecios({ tienda: host, ...pr }, ofertas);
     return { ok: true, aqui: { tienda: host, ...pr }, ofertas, nota: 'Photo cards of each store are already shown in the chat; just summarize briefly which one is cheapest and how much they save.' };
   } catch (e) { return { ok: false, error: e.sinGemini ? 'Price comparison needs the Gemini key.' : String(e.message || e) }; }
@@ -301,14 +309,19 @@ async function fotoDe(url) {
   } catch { return ''; }
 }
 async function tarjetasPrecios(aqui, ofertas) {
-  const lista = ofertas.slice(0, 5); await Promise.all(lista.map(async (o) => { o.foto = await fotoDe(o.url); }));
+  const lista = ofertas.slice(0, 5); await Promise.all(lista.map(async (o) => { o.foto = (await fotoDe(o.url)) || o.imagen || ''; o.web = hostDe(o.url); }));
+  lista.sort((p, q) => p.precio - q.precio);
+  const hay = aqui.precio > 0; const minimo = Math.min(...lista.map((o) => o.precio), hay ? aqui.precio : Infinity);
   const mon = (aqui.moneda || 'USD') === 'USD' ? '$' : ''; const f = (n) => mon + Number(n).toFixed(2) + (mon ? '' : ' ' + aqui.moneda);
-  const tarjeta = (o, aquiMismo) => { const ahorro = aqui.precio - o.precio;
-    return `<a class="tarjeta${aquiMismo ? ' aqui' : ahorro > 0.5 ? ' barata' : ''}" ${aquiMismo ? '' : `data-url="${esc(o.url)}"`}><div class="foto">${o.foto ? `<img src="${esc(o.foto)}" alt="" referrerpolicy="no-referrer" />` : '🛒'}</div>
-      <b>${esc(o.tienda)}</b><span class="pr">${f(o.precio)}</span><small>${aquiMismo ? T('aquí', 'here') + (aqui.estado === 'used' ? ' · ' + T('usado', 'used') : '') : ahorro > 0.5 ? T('ahorras', 'save') + ' ' + f(ahorro) : ahorro < -0.5 ? '+' + f(-ahorro) : T('igual', 'same')}</small></a>`; };
+  const logo = (web) => `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(web || '')}`;
+  const tarjeta = (o, aquiMismo) => { const ahorro = hay ? aqui.precio - o.precio : 0; const foto = o.foto || logo(o.web);
+    return `<a class="tarjeta${aquiMismo ? ' aqui' : ''}${o.precio === minimo ? ' barata' : ''}" ${aquiMismo ? '' : `data-url="${esc(o.url)}"`}><div class="foto"><img src="${esc(foto)}" alt="" referrerpolicy="no-referrer" /></div>
+      <span class="web"><img src="${esc(logo(o.web))}" alt="" />${esc(o.web || o.tienda)}</span><b>${esc(o.tienda)}</b><span class="pr">${f(o.precio)}</span>
+      <small>${aquiMismo ? T('aquí', 'here') + (aqui.estado === 'used' ? ' · ' + T('usado', 'used') : '') : o.precio === minimo ? '🏆 ' + T('el más barato', 'cheapest') + (hay && ahorro > 0.5 ? ' · ' + T('ahorras', 'save') + ' ' + f(ahorro) : '') : hay && ahorro > 0.5 ? T('ahorras', 'save') + ' ' + f(ahorro) : hay && ahorro < -0.5 ? '+' + f(-ahorro) : T('abrir ›', 'open ›')}</small></a>`; };
   const dv = document.createElement('div'); dv.className = 'msg j precios';
-  dv.innerHTML = `<div class="cab">💰 ${T('Comparación de precios', 'Price comparison')}<small>${esc(String(aqui.nombre || '').slice(0, 90))}</small></div><div class="tarjetas">${tarjeta({ tienda: aqui.tienda, precio: aqui.precio, foto: aqui.foto }, true)}${lista.map((o) => tarjeta(o, false)).join('')}</div>`;
-  dv.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => { im.parentNode.textContent = '🛒'; }));
+  dv.innerHTML = `<div class="cab">💰 ${T('Comparación de precios', 'Price comparison')}<small>${esc(String(aqui.nombre || '').slice(0, 90))}</small></div><div class="tarjetas">${hay ? tarjeta({ tienda: aqui.tienda, web: aqui.tienda, precio: aqui.precio, foto: aqui.foto }, true) : ''}${lista.map((o) => tarjeta(o, false)).join('')}</div>`;
+  dv.querySelectorAll('.foto img').forEach((im) => im.addEventListener('error', () => { im.parentNode.textContent = '🛒'; }));
+  dv.querySelectorAll('.web img').forEach((im) => im.addEventListener('error', () => { im.remove(); }));
   $('charla').appendChild(dv); $('charla').scrollTop = $('charla').scrollHeight;
 }
 function barraPrecio(x) {
@@ -326,7 +339,7 @@ function irAlMinuto(s) {
 }
 
 // ═══════════ 🗣 conversación en vivo (Gemini Live, nativo) [09-nov] ═══════════
-const VIVO_HERR = ['open_url', 'web_search', 'tabs', 'scroll', 'navigate', 'read_page', 'summarize_page', 'translate_page', 'zoom', 'find_in_page',
+const VIVO_HERR = ['play_video', 'see_page', 'click', 'type_text', 'media_control', 'open_url', 'web_search', 'tabs', 'scroll', 'navigate', 'read_page', 'summarize_page', 'translate_page', 'zoom', 'find_in_page',
   'browser_history', 'browser_memory', 'remember', 'send_to_phone', 'youtube_subtitles', 'live_dubbing', 'ask_video', 'check_scam', 'compare_prices', 'picture_in_picture', 'list_tabs'];
 const VV = { on: false, tu: null, el: null, reintento: false };
 function vivoBarra(estado, sub = '') {
@@ -343,7 +356,7 @@ async function vivoEncender() {
   if (cfg.conversacionVivo === false) { toast(T('La conversación en vivo está apagada en Ajustes', 'Live conversation is off in Settings')); return; }
   abrirPanel('chat');
   const herramientas = Cerebro.HERRAMIENTAS.filter((h) => VIVO_HERR.includes(h.nombre)).map((h) => ({ name: h.nombre, description: h.desc, ...(h.params ? { parameters: h.params } : {}) }));
-  const sistema = Cerebro.sistemaBase(IDIOMA) + '\n\nTHIS IS A LIVE VOICE CONVERSATION on the phone (like a call): answer in short, natural spoken sentences, no markdown, no lists, no URLs read aloud. The user may interrupt you. You can control the browser with your tools while you talk. Briefly say what you are doing.'
+  const sistema = Cerebro.sistemaBase(IDIOMA) + '\n\nTHIS IS A LIVE VOICE CONVERSATION on the phone (like a call): answer in short, natural spoken sentences, no markdown, no lists, no URLs read aloud. The user may interrupt you. You can control the browser with your tools while you talk: open sites, search, scroll, read the page, click, type, play/pause videos… To play a YouTube video ALWAYS use play_video (with query to search, and n for the 1st, 2nd… result) — never see_page for that. To click other things: call see_page ONCE to get the numbered clickable elements, then click by id (or by visible text); never call see_page twice in a row. To play, pause, skip or rewind use media_control. Never say you cannot click: you can. Briefly say what you are doing.'
     + (!E.privada && E.url && !E.inicio ? `\nThe user is now on: ${E.titulo || ''} — ${E.url}` : '');
   VV.on = true; vivoBarra(T('Conectando…', 'Connecting…'));
   const r = await H('vivo', { on: true, sistema, herramientas });
@@ -353,14 +366,17 @@ async function vivoEncender() {
   msg('j', r && r.error === 'sin-gemini' ? T('🗣 La conversación en vivo necesita tu llave de Gemini (Ajustes › Cerebro).', '🗣 Live conversation needs your Gemini key (Settings › Brain).') : T('🗣 No pude empezar la conversación en vivo.', "🗣 Couldn't start the live conversation."));
 }
 function vivoApagar(error) {
-  const estaba = VV.on; VV.on = false; VV.tu = VV.el = null;
+  const estaba = VV.on; VV.on = false; VV.tu = VV.el = null; VV.reconex = 0;
   H('vivo', { on: false }); vivoBarra('');
   if (error) msg('j', '🗣 ' + error); else if (estaba) msg('j', T('🗣 Conversación en vivo terminada.', '🗣 Live conversation ended.'));
 }
 nav.en('vivo', (ev) => {
   if (!VV.on || !ev) return;
-  if (ev.estado === 'listo') { H('vibrar', { ms: 30 }); vivoBarra(T('Te escucho…', 'Listening…'), T('Habla cuando quieras · ■ para terminar', 'Speak any time · ■ to end')); return; }
-  if (ev.estado === 'fin' || ev.estado === 'error') { vivoApagar(ev.error); return; }
+  if (ev.estado === 'listo') { if (!VV.reconex) H('vibrar', { ms: 30 }); vivoBarra(T('Te escucho…', 'Listening…'), T('Habla cuando quieras · ■ para terminar', 'Speak any time · ■ to end')); return; }
+  if (ev.estado === 'fin' || ev.estado === 'error') {
+    if (ev.inesperado && VV.on && (VV.reconex = (VV.reconex || 0) + 1) <= 3) { vivoBarra(T('Reconectando…', 'Reconnecting…')); VV.on = false; vivoEncender().then(() => {}); return; }   // se cortó solo: reconecta [09-nov]
+    vivoApagar(ev.error || (ev.inesperado && ev.motivo ? T('Gemini cortó la conversación: ', 'Gemini ended the conversation: ') + ev.motivo : '')); return;
+  }
   if (ev.interrumpido) { VV.el = null; vivoBarra(T('Te escucho…', 'Listening…')); }
   if (ev.habla) vivoBarra(T('JARVIS habla…', 'JARVIS speaking…'), T('Puedes interrumpirlo', 'You can interrupt'));
   if (ev.tu) { if (!VV.tu) VV.tu = msg('u', ''); VV.tu.textContent += ev.tu; VV.el = null; }
@@ -371,7 +387,10 @@ nav.en('vivo', (ev) => {
 nav.en('vivo-herramienta', async (x) => {   // JARVIS usa una herramienta mientras hablan
   if (!x) return;
   const p = msg('j', '⚙ ' + String(x.nombre || '').replace(/_/g, ' ')); p.style.opacity = '.6';
-  let r = null; try { r = await herramienta(x.nombre, x.args || {}); } catch (e) { r = { salida: { ok: false, error: String(e.message || e) } }; }
+  VV.seguidos = x.nombre === VV.ultima ? (VV.seguidos || 0) + 1 : 1; VV.ultima = x.nombre;
+  let r = null;
+  if (x.nombre === 'see_page' && VV.seguidos > 2) r = { salida: { ok: false, error: 'You already called see_page several times. Stop: use click with an id from the list you already got, or play_video for YouTube.' } };   // anti-bucle
+  else { try { r = await herramienta(x.nombre, x.args || {}); } catch (e) { r = { salida: { ok: false, error: String(e.message || e) } }; } }
   H('vivo-respuesta', { id: x.id, nombre: x.nombre, salida: (r && r.salida !== undefined ? r.salida : r) || { ok: true } });
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && VV.on) vivoApagar(); });   // sales de la app: se corta
@@ -462,3 +481,50 @@ document.addEventListener('click', async (e) => {
   }
   if (e.target.id === 'aj-cont-olvidar') { guardarCfg({ continuarToken: '' }); $('aj-cont-estado').textContent = T('Sin emparejar', 'Not paired'); toast(T('PC olvidada', 'PC forgotten')); }
 });
+
+// ▶ poner un video de YouTube sin tener que «ver» la página [09-nov]
+const JS_PRIMER_VIDEO = `(() => { const n = %N%; const vistos = new Set(); const lista = [];
+  for (const a of document.querySelectorAll('a[href*="/watch?v="]')) {
+    let v = ''; try { v = new URL(a.href, location.href).searchParams.get('v'); } catch (e) { }
+    if (!v || vistos.has(v)) continue;
+    if (a.closest('ytd-ad-slot-renderer, ytm-promoted-video-renderer, ytd-promoted-video-renderer, ytm-companion-slot, [is-ad], .ad-container')) continue;
+    const t = (a.getAttribute('title') || a.getAttribute('aria-label') || a.innerText || '').trim();
+    vistos.add(v); lista.push({ v, t });
+  }
+  const x = lista[n - 1] || lista[0]; if (!x) return null;
+  location.href = 'https://' + location.host + '/watch?v=' + x.v; return { titulo: x.t.split(String.fromCharCode(10))[0].slice(0, 120), total: lista.length };
+})()`;
+async function ponerVideo(query, n) {
+  n = Math.max(1, Math.min(20, Number(n) || 1));
+  if (query) { await H('ir', { url: 'https://m.youtube.com/results?search_query=' + encodeURIComponent(String(query)) }); await esperarCarga(); await pausa(2500); }
+  if (!/youtube\.com|youtu\.be/.test(E.url || (await H('estado')).url)) return { ok: false, error: 'Not on YouTube: pass a query to search it.' };
+  let r = null; for (let i = 0; i < 5 && !r; i++) { r = await enPagina(JS_PRIMER_VIDEO.replace('%N%', n)); if (!r) await pausa(1200); }
+  if (!r) return { ok: false, error: 'No videos found on this page.' };
+  await esperarCarga(); await pausa(1500);
+  enPagina("(() => { const v = document.querySelector('video'); if (v && v.paused) v.play(); })()");
+  return { ok: true, reproduciendo: r.titulo };
+}
+
+const JS_RESULTADOS = `(() => { const out = []; const vistos = new Set();
+  const hostDe = (u) => { try { return new URL(u).hostname.replace(/^www\\./, ''); } catch (e) { return ''; } };
+  const real = (a) => { let x = null; try { x = new URL(a.href); } catch (e) { return ''; } if (/(^|\\.)(google|gstatic|googleusercontent|bing|duckduckgo|youtube)\\./.test(x.hostname)) { const q = x.searchParams.get('url') || x.searchParams.get('q') || x.searchParams.get('adurl'); return q && /^https?:/.test(q) ? q : ''; } return a.href; };
+  for (const a of document.querySelectorAll('a[href^="http"]')) {
+    const u = real(a); const h = u && hostDe(u); if (!h || vistos.has(u)) continue; vistos.add(u);
+    // la caja del resultado: se sube mientras siga siendo solo de esa tienda, así entra el texto con el PRECIO [09-nov]
+    let caja = a;
+    for (let k = 0; k < 10 && caja.parentElement; k++) {
+      const p = caja.parentElement; const webs = new Set();
+      for (const b of p.querySelectorAll('a[href^="http"]')) { const v = real(b); const hv = v && hostDe(v); if (hv) webs.add(hv); if (webs.size > 1) break; }
+      if (webs.size > 1 || String(p.innerText || '').length > 1500) break;
+      caja = p;
+    }
+    // la foto del producto: la imagen más grande de esa caja (no el iconito de la web)
+    let foto = ''; let mejor = 0;
+    for (const im of caja.querySelectorAll('img')) { const r = im.getBoundingClientRect(); const s = r.width * r.height; if (r.width >= 50 && r.height >= 50 && s > mejor) { mejor = s; foto = im.currentSrc || im.src || ''; } }
+    if (foto.length > 60000) foto = '';
+    out.push({ i: out.length, url: u, web: h, texto: String(caja.innerText || a.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 400), foto });
+    if (out.length >= 40) break;
+  }
+  return { titulo: document.title, enlaces: out };
+})()
+`;

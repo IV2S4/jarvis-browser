@@ -439,3 +439,6 @@ body.guardia #pestanas, body.guardia #direccion { filter: blur(7px); }
 .msg.precios .pr { font-weight: 700; color: var(--cian); }
 .msg.precios .tarjeta.barata .pr { color: #3dffb5; }
 .msg.precios small { font-size: 10px; opacity: .8; text-align: center; }
+
+.msg.precios .web { display: flex; align-items: center; gap: 4px; font-size: 10px; opacity: .85; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.msg.precios .web img { width: 12px; height: 12px; border-radius: 2px; }

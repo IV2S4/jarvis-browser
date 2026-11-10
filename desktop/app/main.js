@@ -1021,6 +1021,28 @@ async function herramienta(n, a) {
       if (!(cfg.continuarTokens || []).length) return { salida: { ok: false, error: 'The phone is not paired yet: Settings › Continue on the other device › Pair phone.' } };
       continuar.mandarAlTelefono(await ahoraEnPC()); return { salida: { ok: true, nota: 'The phone will show it in a few seconds (JARVIS Browser must be open on the phone).' } };
     }
+    case 'play_video': {   // ▶ busca en YouTube y pone el video número N (sin tener que «ver» la página) [09-nov]
+      const n = Math.max(1, Math.min(20, Number(a.n) || 1));
+      if (a.query) { await control('abrir', { url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(String(a.query)) }); await esperarCarga(); await pausa(2500); }
+      const w = wc(); if (!w) return { salida: { ok: false, error: 'No page.' } };
+      if (!/youtube\.com|youtu\.be/.test(w.getURL())) return { salida: { ok: false, error: 'Not on YouTube: pass a query to search it.' } };
+      let r = null; for (let i = 0; i < 4 && !r; i++) { try { r = await w.executeJavaScript(JS_PRIMER_VIDEO.replace('%N%', n), true); } catch { /* */ } if (!r) await pausa(1200); }
+      if (!r) return { salida: { ok: false, error: 'No videos found on this page.' } };
+      await esperarCarga(); await pausa(1500);
+      try { await w.executeJavaScript("(() => { const v = document.querySelector('video'); if (v && v.paused) v.play(); })()", true); } catch { /* */ }
+      return { salida: { ok: true, reproduciendo: r.titulo, url: w.getURL() } };
+    }
+    case 'media_control': {   // ⏯ play/pausa/adelantar/atrás del video de la página [09-nov]
+      const w = wc(); if (!w) return { salida: { ok: false, error: 'No page.' } };
+      const acc = String(a.action || 'toggle'); const s = Number(a.seconds) || 10;
+      try {
+        const r = await w.executeJavaScript(`(() => { const vs = [...document.querySelectorAll('video')]; const v = vs.find((x) => !x.paused) || vs.find((x) => x.offsetWidth > 0) || vs[0]; if (!v) return { ok: false, error: 'No video on this page' };
+          const a = ${JSON.stringify(acc)};
+          if (a === 'play') v.play(); else if (a === 'pause') v.pause(); else if (a === 'forward') v.currentTime += ${s}; else if (a === 'back') v.currentTime = Math.max(0, v.currentTime - ${s}); else if (a === 'mute') v.muted = !v.muted; else { v.paused ? v.play() : v.pause(); }
+          return { ok: true, playing: !v.paused, at: Math.floor(v.currentTime) }; })()`, true);
+        return { salida: r };
+      } catch (e) { return { salida: { ok: false, error: String(e.message || e) } }; }
+    }
     case 'check_scam': {   // 🛡 [09-nov]
       const t = await revisarTiendaAhora(); if (!t.ok) return { salida: t };
       const r = await estafas.revisar(t.host, t.d);
@@ -1029,10 +1051,21 @@ async function herramienta(n, a) {
     }
     case 'compare_prices': {   // 💰 [09-nov]
       const t = await revisarTiendaAhora(); if (!t.ok) return { salida: t };
-      const pr = t.d.producto || (a.product ? { nombre: a.product, precio: 0 } : null);
-      if (!pr) return { salida: { ok: false, error: 'This page does not look like a product page. Ask the user which product.' } };
+      // también desde Google u otra página: con el nombre que diga el usuario o el título de la página [09-nov]
+      const titulo = String(t.d.titulo || '').replace(/\s+[-–|]\s+(Google Search|Buscar con Google|Búsqueda de Google|Bing|DuckDuckGo).*$/i, '').trim();
+      const pr = t.d.producto || ((a.product || titulo) ? { nombre: a.product || titulo, precio: 0 } : null);
+      if (!pr) return { salida: { ok: false, error: 'Ask the user which product.' } };
       try {
-        const ofertas = await cerebro.compararPrecios({ ...pr, tienda: t.host });
+        let ofertas = []; let fallo = null;
+        // 1) los resultados de Google (rápido, sin la cuota de búsqueda de Gemini, y con la foto de cada tienda)
+        let w = t.w;
+        if (!/google\.|bing\.com/.test(w.getURL())) { nueva('https://www.google.com/search?q=' + encodeURIComponent(pr.nombre + ' price'), false); await pausa(400); w = pestanas[pestanas.length - 1].vista.webContents; await new Promise((ok) => { w.once('did-finish-load', ok); setTimeout(ok, 9000); }); await pausa(1500); }
+        let res = null; try { res = await w.executeJavaScript(JS_RESULTADOS, true); } catch (e) { anotarPrecio({ planA: 'js', error: String(e.message || e).slice(0, 200) }); }
+        anotarPrecio({ planA: 'resultados', enlaces: res && res.enlaces ? res.enlaces.length : 0, muestra: res && res.enlaces ? res.enlaces.slice(0, 3).map((x) => [x.web, x.texto.slice(0, 60), Boolean(x.foto)]) : null });
+        if (res && res.enlaces && res.enlaces.length) { try { ofertas = await cerebro.ofertasDeResultados(pr, res.enlaces); } catch (e) { fallo = e; anotarPrecio({ planA: 'ia', error: String(e.message || e).slice(0, 200) }); } }
+        // 2) si no salió nada: la búsqueda de Gemini (con tiempo límite)
+        if (!ofertas.length) { try { ofertas = await Promise.race([cerebro.compararPrecios({ ...pr, tienda: t.host }), pausa(25000).then(() => [])]); } catch (e) { fallo = e; } }
+        if (!ofertas.length && fallo) throw fallo;
         anotarPrecio({ url: t.w.getURL(), producto: pr, ofertas, desde: 'chat' });
         if (ofertas.length) tarjetasPrecios({ tienda: t.host, ...pr }, ofertas);
         return { salida: { ok: true, aqui: { tienda: t.host, ...pr }, ofertas, nota: 'Photo cards of each store are already shown in the chat; just summarize briefly which one is cheapest and how much they save.' } };
@@ -1592,6 +1625,31 @@ function arrancarContinuar(forzar) {
     guardarToken: (token, nombre) => { cfg.continuarTokens = [...(cfg.continuarTokens || []), { token, nombre, t: Date.now() }].slice(-5); proteccion.guardarConfig(cfg); } });
 }
 setTimeout(() => arrancarContinuar(false), 4000);
+const JS_RESULTADOS = `(() => { const out = []; const vistos = new Set();
+  for (const a of document.querySelectorAll('a[href^="http"]')) {
+    let u = a.href; let x = null; try { x = new URL(u); } catch (e) { continue; }
+    if (/(^|\\.)(google|gstatic|googleusercontent|bing|duckduckgo|youtube)\\./.test(x.hostname)) { const q = x.searchParams.get('url') || x.searchParams.get('q') || x.searchParams.get('adurl'); if (q && /^https?:/.test(q)) u = q; else continue; }
+    let h = ''; try { h = new URL(u).hostname.replace(/^www\\./, ''); } catch (e) { continue; }
+    if (vistos.has(u)) continue; vistos.add(u);
+    let c = a; let img = null; for (let k = 0; k < 6 && c && !img; k++) { img = c.querySelector ? c.querySelector('img') : null; if (!img) c = c.parentElement; }
+    const caja = c || a;
+    out.push({ i: out.length, url: u, web: h, texto: String(caja.innerText || a.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 260), foto: img ? (img.currentSrc || img.src || '') : '' });
+    if (out.length >= 40) break;
+  }
+  return { titulo: document.title, enlaces: out };
+})()
+`;
+const JS_PRIMER_VIDEO = `(() => { const n = %N%; const vistos = new Set(); const lista = [];
+  for (const a of document.querySelectorAll('a[href*="/watch?v="]')) {
+    let v = ''; try { v = new URL(a.href, location.href).searchParams.get('v'); } catch (e) { }
+    if (!v || vistos.has(v)) continue;
+    if (a.closest('ytd-ad-slot-renderer, ytm-promoted-video-renderer, ytd-promoted-video-renderer, ytm-companion-slot, [is-ad], .ad-container')) continue;
+    const t = (a.getAttribute('title') || a.getAttribute('aria-label') || a.innerText || '').trim();
+    vistos.add(v); lista.push({ v, t });
+  }
+  const x = lista[n - 1] || lista[0]; if (!x) return null;
+  location.href = 'https://' + location.host + '/watch?v=' + x.v; return { titulo: x.t.split(String.fromCharCode(10))[0].slice(0, 120), total: lista.length };
+})()`;
 const vivo = require('./lib/vivo');             // 🗣 conversación en vivo (Gemini Live) [09-nov]
 const T2 = (es, en) => (codIdioma(cfg) === 'es' ? es : en);
 const estafas = require('./lib/estafas');       // 🛡 detector de estafas · 💰 comparador de precios [09-nov]
@@ -1648,7 +1706,7 @@ async function fotoDe(url) {
 }
 async function tarjetasPrecios(aqui, ofertas) {
   const lista = ofertas.slice(0, 5);
-  await Promise.all(lista.map(async (o) => { o.foto = await fotoDe(o.url); }));
+  await Promise.all(lista.map(async (o) => { o.foto = (await fotoDe(o.url)) || o.imagen || ''; o.web = proteccion.host(o.url); }));
   aviso('precio-chat', { aqui: { tienda: aqui.tienda, precio: aqui.precio, moneda: aqui.moneda || 'USD', nombre: aqui.nombre, foto: aqui.foto || '', estado: aqui.estado || '' }, ofertas: lista });
 }
 async function revisarTiendaAhora() {   // para «Jarvis, ¿esta tienda es confiable?» y «¿está más barato en otro lado?»
@@ -2148,7 +2206,7 @@ ipcMain.handle('nav', async (_e, accion, d) => {
       const hechos = cfg.memoriaJarvis !== false ? memoria.todas().slice(0, 25).map((x) => '- ' + x.texto).join('\n') : '';
       const p = actual();
       vivo.empezar({ llave, HERRAMIENTAS: cerebro.HERRAMIENTAS, avisar: (ev) => aviso('vivo', ev),
-        sistema: cerebro.sistemaBase(cod) + `\n\nTHIS IS A LIVE VOICE CONVERSATION (like a phone call): answer in short, natural spoken sentences, no markdown, no lists, no URLs read aloud. The user may interrupt you. You can control the browser with your tools while you talk (open sites, search, scroll, read or summarize the page, ask about the video, check scams, compare prices…). Briefly say what you're doing.`
+        sistema: cerebro.sistemaBase(cod) + `\n\nTHIS IS A LIVE VOICE CONVERSATION (like a phone call): answer in short, natural spoken sentences, no markdown, no lists, no URLs read aloud. The user may interrupt you. You can control the browser with your tools while you talk (open sites, search, scroll, read or summarize the page, click, type, play/pause videos, ask about the video, check scams, compare prices…). To play a YouTube video ALWAYS use play_video (with query to search, and n for the 1st, 2nd… result) — never see_page for that. To click other things: call see_page ONCE to get the numbered clickable elements, then click by id (or by visible text); never call see_page twice in a row. To play, pause, skip or rewind use media_control. Never say you can't click: you can. Briefly say what you're doing.`
           + (p && !p.privada ? `\nThe user is now on: ${p.dormida ? p.dormida.titulo : p.vista.webContents.getTitle()} — ${urlDe(p)}` : '') + (hechos ? `\nWhat you remember about the user:\n${hechos}` : ''),
         ejecutar: async (n, a) => { const r = await herramienta(n, a); return r && r.salida !== undefined ? r.salida : r; } });
       return { ok: true };

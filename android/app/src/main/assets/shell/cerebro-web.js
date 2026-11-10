@@ -345,10 +345,12 @@ const HERRAMIENTAS = [
   { nombre: 'browser_memory', desc: 'Search the user\'s browser memory: the text of pages they visited before (not just titles). Use it when the user asks where they saw something ("where did I see some red sneakers?"). Put keywords in BOTH the user\'s language and English, with synonyms (e.g. "tenis rojos zapatillas red sneakers shoes"). Answer with title, when, and full URL of the best matches.', params: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
   { nombre: 'live_dubbing', desc: 'Live dubbing of the video in the current page: reads its subtitles aloud translated into a language (code like es, en) with a native voice, and lowers the original sound. on=false turns it off. Use for "dub this video", "dóblalo al español", "quita el doblaje".', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'look_through_camera', desc: 'Open the phone\'s back camera so the user can photograph a real object (not the page); you receive the photo. Use it for "what is this?", "¿qué es esto?", "busca esto", "look at this". Then identify it (brand/model if visible) and use web_search to find it when useful.' },
+  { nombre: 'play_video', desc: 'Play a YouTube video: searches YouTube for the query (optional) and opens result number n (1 = first). Use for "play the first video", "pon el primer video de Bad Bunny", "play the second one".', params: { type: 'object', properties: { query: { type: 'string' }, n: { type: 'integer' } } } },
+  { nombre: 'media_control', desc: 'Control the video playing in the current page: play, pause, toggle, forward or back N seconds, mute.', params: { type: 'object', properties: { action: { type: 'string', enum: ['play', 'pause', 'toggle', 'forward', 'back', 'mute'] }, seconds: { type: 'integer' } }, required: ['action'] } },
   { nombre: 'deep_research', desc: 'Start a deep web research in the background on a topic (several searches + a written report with a comparison table and sources, shown in the chat when ready, 1–3 min). Use for "investiga…", "research…", "compare the best X for me".', params: { type: 'object', properties: { topic: { type: 'string', description: 'the full research request in the user\'s words' } }, required: ['topic'] } },
   { nombre: 'continue_on_pc', desc: 'Open what the user is watching on the phone (page and video minute) on their paired PC, to continue there. Use for "sigo en la PC", "pásalo a la computadora", "continue on my PC".' },
   { nombre: 'check_scam', desc: 'Check whether the current store/page is a scam: domain age, brand imitation, payment methods and an AI analysis. Use for "is this store legit?", "¿esta tienda es confiable?".' },
-  { nombre: 'compare_prices', desc: 'Find the same product of the current page cheaper in other big stores (with today\'s prices); photo cards of each store appear in the chat. Use for "is it cheaper elsewhere?", "compara precios".', params: { type: 'object', properties: { product: { type: 'string', description: 'only if the page is not a product page' } } } },
+  { nombre: 'compare_prices', desc: 'Find the same product (of the current page, or the one the user names in product) in other big stores with today\'s prices; works from any page, even Google results. Photo cards of each store appear in the chat. Use for "is it cheaper elsewhere?", "compara precios".', params: { type: 'object', properties: { product: { type: 'string', description: 'only if the page is not a product page' } } } },
   { nombre: 'ask_video', desc: 'Ask anything about the YouTube video open in the current tab (Gemini watches it): "in which minute does he explain X?", "give me the chapters". The answer has [MM:SS] timestamps that jump to that moment.', params: { type: 'object', properties: { question: { type: 'string' } }, required: ['question'] } },
   { nombre: 'youtube_subtitles', desc: 'On a YouTube video, turn on live subtitles translated into a language (code like es, en, fr), or turn them off.', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'save_game_clip', desc: 'Save the last moments of the game the user is playing as a video clip (NVIDIA Instant Replay or Xbox Game Bar) and send it to their phone. Use for "clip that", "save that play".' },
@@ -357,7 +359,7 @@ const HERRAMIENTAS = [
 const ETIQUETAS = { open_url: 'Abriendo', web_search: 'Buscando', read_page: 'Leyendo la página', see_page: 'Mirando la página', click: 'Haciendo clic', type_text: 'Escribiendo',
   scroll: 'Desplazando', navigate: 'Navegando', tabs: 'Pestañas', walkthrough_page: 'Recorriendo la página', summarize_page: 'Resumiendo', translate_page: 'Traduciendo la página',
   read_aloud: 'Leyendo en voz alta', browser_history: 'Mirando el historial', list_tabs: 'Revisando las pestañas', read_tab: 'Leyendo otra pestaña',
-  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', youtube_subtitles: 'Subtítulos', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', check_scam: 'Revisando si es estafa', deep_research: 'Investigando', continue_on_pc: 'Pasando a la PC', compare_prices: 'Comparando precios', ask_video: 'Mirando el video', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
+  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', youtube_subtitles: 'Subtítulos', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', check_scam: 'Revisando si es estafa', deep_research: 'Investigando', media_control: 'Video', play_video: 'Poniendo el video', continue_on_pc: 'Pasando a la PC', compare_prices: 'Comparando precios', ask_video: 'Mirando el video', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
 
 let historia = [];
 let turno = 0;
@@ -468,10 +470,21 @@ async function compararPrecios(p) {
   const t = await geminiConBusqueda(`Search the web for the CURRENT price of exactly this product in other big online stores${p.pais ? ` in ${p.pais}` : ' in the United States'} (Amazon, Walmart, Best Buy, Target, eBay new, Costco, the brand's own store…), excluding ${p.tienda}.
 Product: ${p.nombre}${p.marca ? `\nBrand: ${p.marca}` : ''}${p.modelo ? `\nModel/SKU/GTIN: ${p.modelo}` : ''}
 Price here at ${p.tienda}: ${p.precio} ${p.moneda || 'USD'}${p.estado === 'used' ? ' (this one is USED; compare with NEW prices)' : ''}
-Only the SAME product (same model, size, capacity, condition new). Reply ONLY with JSON: {"ofertas":[{"tienda":"Walmart","precio":123.45,"moneda":"USD","url":"https://…"}]} — up to 5, cheapest first, real product page URLs; {"ofertas":[]} if none found.`, 1200);
+Only the SAME product (same model, size, capacity, condition new). Reply ONLY with JSON: {"ofertas":[{"tienda":"Walmart","precio":123.45,"moneda":"USD","url":"https://…","imagen":"https://… (product photo URL, if you know it)"}]} — up to 5, cheapest first, real product page URLs; {"ofertas":[]} if none found.`, 1200);
   const j = sacarJson(t);
   return (Array.isArray(j.ofertas) ? j.ofertas : []).filter((o) => o && o.tienda && Number(o.precio) > 0 && /^https:\/\//.test(o.url || ''))
-    .map((o) => ({ tienda: String(o.tienda).slice(0, 40), precio: Number(o.precio), moneda: String(o.moneda || p.moneda || 'USD').slice(0, 4), url: String(o.url) }));
+    .map((o) => ({ tienda: String(o.tienda).slice(0, 40), precio: Number(o.precio), moneda: String(o.moneda || p.moneda || 'USD').slice(0, 4), url: String(o.url), imagen: /^https:\/\//.test(o.imagen || '') ? String(o.imagen) : '' }));
+}
+async function ofertasDeResultados(p, enlaces) {   // 💰 plan B sin la búsqueda de Gemini (cuota) [09-nov]
+  const r = await pensar({ sistema: 'You extract shopping offers from web search results. Never invent prices or links.', historia: [{ rol: 'user', texto:
+`Product: ${p.nombre}
+From these search results (each has i, web, url and the visible text), pick up to 6 STORES that sell exactly this product and whose text shows its price.
+Reply ONLY with JSON: {"ofertas":[{"i":0,"tienda":"Walmart","precio":12.34,"moneda":"USD"}]} using the i of the result. {"ofertas":[]} if none.
+RESULTS:
+${JSON.stringify(enlaces.map(({ i, web, url, texto }) => ({ i, web, url: url.slice(0, 160), texto })))}` }], max: 800 });
+  const j = sacarJson(r.texto);
+  return (Array.isArray(j.ofertas) ? j.ofertas : []).map((o) => ({ o, l: enlaces[Number(o.i)] })).filter(({ o, l }) => l && Number(o.precio) > 0)
+    .map(({ o, l }) => ({ tienda: String(o.tienda || l.web).slice(0, 40), precio: Number(o.precio), moneda: String(o.moneda || 'USD').slice(0, 4), url: l.url, imagen: l.foto || '' }));
 }
 async function analizarEstafa(d, cod) {
   const r = await pensar({ sistema: 'You are an online-fraud analyst. Be calibrated: well-known legitimate stores are safe; do not cry wolf.', historia: [{ rol: 'user', texto:
@@ -484,4 +497,4 @@ Reply ONLY with JSON: {"riesgo":"bajo|medio|alto","resumen":"one short sentence 
 }
 
 window.Cerebro = { PROVEEDORES, SECRETOS, ponerPuestas, estadoLlaves, hayAlguna, pensar, preguntarPagina, describirPagina, describirParte, resumir, traducirLista,
-  transcribir, voz, chat, olvidar, parar, diagnostico, ultimo: () => ultimoUsado, idiomaDe, NOMBRE_IDIOMA, configurarLocal, localVivo, sinMarkdown, preguntarVideo, compararPrecios, analizarEstafa, sistemaBase, fetchN, HERRAMIENTAS, buscarWeb };
+  transcribir, voz, chat, olvidar, parar, diagnostico, ultimo: () => ultimoUsado, idiomaDe, NOMBRE_IDIOMA, configurarLocal, localVivo, sinMarkdown, preguntarVideo, compararPrecios, analizarEstafa, ofertasDeResultados, sistemaBase, fetchN, HERRAMIENTAS, buscarWeb };

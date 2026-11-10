@@ -6,7 +6,7 @@
 const URL_LIVE = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent';
 const MODELOS = ['gemini-3.8-live', 'gemini-3.1-flash-live-preview', 'gemini-live-2.5-flash-preview'];
 // herramientas que JARVIS puede usar mientras hablan (las mismas del chat, sin las de autopiloto visual)
-const PERMITIDAS = ['open_url', 'web_search', 'tabs', 'scroll', 'navigate', 'read_page', 'summarize_page', 'translate_page', 'zoom', 'find_in_page',
+const PERMITIDAS = ['play_video', 'see_page', 'click', 'type_text', 'media_control', 'open_url', 'web_search', 'tabs', 'scroll', 'navigate', 'read_page', 'summarize_page', 'translate_page', 'zoom', 'find_in_page',
   'browser_history', 'browser_memory', 'remember', 'send_to_phone', 'youtube_subtitles', 'live_dubbing', 'ask_video', 'check_scam', 'compare_prices', 'picture_in_picture', 'list_tabs', 'watch_page'];
 
 let ses = null;   // { ws, modelo, listo, cerrar }
@@ -51,7 +51,10 @@ function empezar(o, intento = 0) {
       const respuestas = [];
       for (const f of m.toolCall.functionCalls) {
         o.avisar({ herramienta: f.name });
-        let salida = null; try { salida = await o.ejecutar(f.name, f.args || {}); } catch (err) { salida = { ok: false, error: String(err.message || err) }; }
+        let salida = null;
+        yo.seguidos = f.name === yo.ultima ? (yo.seguidos || 0) + 1 : 1; yo.ultima = f.name;
+        if (f.name === 'see_page' && yo.seguidos > 2) salida = { ok: false, error: 'You already called see_page several times. Stop: use click with an id from the list you already got, or play_video for YouTube.' };   // anti-bucle
+        else { try { salida = await o.ejecutar(f.name, f.args || {}); } catch (err) { salida = { ok: false, error: String(err.message || err) }; } }
         respuestas.push({ id: f.id, name: f.name, response: { result: JSON.parse(JSON.stringify(salida ?? null)) } });
       }
       if (ses === yo && ws.readyState === 1) ws.send(JSON.stringify({ toolResponse: { functionResponses: respuestas } }));
@@ -63,7 +66,7 @@ function empezar(o, intento = 0) {
     if (!yo.listo && ses === yo && intento + 1 < MODELOS.length && e.code !== 1000) { empezar(o, intento + 1); return; }   // ese modelo no está: el siguiente
     if (ses === yo) ses = null;
     const r = String(e.reason || '');
-    o.avisar({ estado: 'fin', error: yo.listo ? '' : (/quota|exhausted|429/i.test(r) ? 'Se acabó la cuota gratis de Gemini Live por hoy.' : /key|API_KEY|permission/i.test(r) ? 'La llave de Gemini no sirve para Live.' : r || 'Gemini cerró la conexión.') });
+    o.avisar({ estado: 'fin', inesperado: yo.listo, motivo: r.slice(0, 160), error: yo.listo ? '' : (/quota|exhausted|429/i.test(r) ? 'Se acabó la cuota gratis de Gemini Live por hoy.' : /key|API_KEY|permission/i.test(r) ? 'La llave de Gemini no sirve para Live.' : r || 'Gemini cerró la conexión.') });
   };
   ws.onerror = () => { /* onclose dice qué pasó */ };
 }

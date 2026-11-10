@@ -482,18 +482,24 @@ window.nav.en('estafa', (a) => {
 });
 // 🖼 comparación de precios con foto de cada tienda, en el chat [09-nov]
 window.nav.en('precio-chat', (x) => {
-  const a = x.aqui; const mon = a.moneda === 'USD' ? '$' : ''; const f = (n) => mon + Number(n).toFixed(2) + (mon ? '' : ' ' + a.moneda);
+  const a = x.aqui; const mon = (a.moneda || 'USD') === 'USD' ? '$' : ''; const f = (n) => mon + Number(n).toFixed(2) + (mon ? '' : ' ' + a.moneda);
+  const hay = a.precio > 0; const minimo = Math.min(...x.ofertas.map((o) => o.precio), hay ? a.precio : Infinity);
   const d = document.createElement('div'); d.className = 'msg j precios';
+  const logo = (web) => `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(web || '')}`;
   const tarjeta = (o, aquiMismo) => {
-    const ahorro = a.precio - o.precio;
-    return `<a class="tarjeta${aquiMismo ? ' aqui' : ahorro > 0.5 ? ' barata' : ''}" ${aquiMismo ? '' : `data-url="${esc(o.url)}"`}>
-      <div class="foto">${o.foto ? `<img src="${esc(o.foto)}" alt="" referrerpolicy="no-referrer" />` : '🛒'}</div>
+    const ahorro = hay ? a.precio - o.precio : 0;
+    const foto = o.foto || logo(o.web);
+    return `<a class="tarjeta${aquiMismo ? ' aqui' : ''}${o.precio === minimo ? ' barata' : ''}" ${aquiMismo ? '' : `data-url="${esc(o.url)}"`} title="${esc(o.url || '')}">
+      <div class="foto">${`<img src="${esc(foto)}" alt="" referrerpolicy="no-referrer" />`}</div>
+      <span class="web"><img src="${esc(logo(o.web))}" alt="" />${esc(o.web || o.tienda)}</span>
       <b>${esc(o.tienda)}</b><span class="pr">${f(o.precio)}</span>
-      <small>${aquiMismo ? T('aquí', 'here') + (a.estado === 'used' ? ' · ' + T('usado', 'used') : '') : ahorro > 0.5 ? T('ahorras', 'save') + ' ' + f(ahorro) : ahorro < -0.5 ? '+' + f(-ahorro) : T('igual', 'same')}</small></a>`;
+      <small>${aquiMismo ? T('aquí', 'here') + (a.estado === 'used' ? ' · ' + T('usado', 'used') : '') : o.precio === minimo ? '🏆 ' + T('el más barato', 'cheapest') + (hay && ahorro > 0.5 ? ' · ' + T('ahorras', 'save') + ' ' + f(ahorro) : '') : hay && ahorro > 0.5 ? T('ahorras', 'save') + ' ' + f(ahorro) : hay && ahorro < -0.5 ? '+' + f(-ahorro) : T('abrir ›', 'open ›')}</small></a>`;
   };
+  const lista = [...x.ofertas].sort((p, q) => p.precio - q.precio);
   d.innerHTML = `<div class="cab">💰 ${T('Comparación de precios', 'Price comparison')}<small>${esc(String(a.nombre || '').slice(0, 90))}</small></div>
-    <div class="tarjetas">${tarjeta({ tienda: a.tienda, precio: a.precio, foto: a.foto }, true)}${x.ofertas.map((o) => tarjeta(o, false)).join('')}</div>`;
-  d.querySelectorAll('img').forEach((im) => im.addEventListener('error', () => { im.parentNode.textContent = '🛒'; }));
+    <div class="tarjetas">${hay ? tarjeta({ tienda: a.tienda, web: a.tienda, precio: a.precio, foto: a.foto }, true) : ''}${lista.map((o) => tarjeta(o, false)).join('')}</div>`;
+  d.querySelectorAll('.foto img').forEach((im) => im.addEventListener('error', () => { im.parentNode.textContent = '🛒'; }));
+  d.querySelectorAll('.web img').forEach((im) => im.addEventListener('error', () => { im.remove(); }));
   $('charla2').appendChild(d); $('charla2').scrollTop = $('charla2').scrollHeight;
 });
 // 💰 más barato en otra tienda [09-nov]
