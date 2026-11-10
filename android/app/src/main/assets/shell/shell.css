@@ -204,3 +204,13 @@ body.teclado .hoja.grande { height: calc(100vh - var(--ime) - var(--sat) - 20px)
 @keyframes gparpadeo { 50% { opacity: .4; } }
 #gestos-chip.mano { border-color: #3cff8c; box-shadow: 0 0 8px rgba(60, 255, 140, .6); }
 #gestos-chip.error b { color: #ff5c7a; }
+/* 📸 busca lo que ves [09-nov] */
+#camara-busca { position: fixed; inset: 0; z-index: 99999; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#camara-busca video { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+#camara-busca p { position: absolute; top: calc(var(--sat, 0px) + 24px); left: 16px; right: 16px; text-align: center; color: #fff; font-weight: 600; text-shadow: 0 1px 6px #000; margin: 0; }
+#camara-busca div { position: absolute; bottom: calc(var(--sab, 0px) + 36px); display: flex; gap: 48px; align-items: center; }
+#camara-busca button { border: 2px solid rgb(var(--c1, 56,214,255)); background: rgba(3,8,14,.6); color: #fff; border-radius: 50%; }
+#camara-busca .disparo { width: 78px; height: 78px; font-size: 32px; box-shadow: 0 0 18px rgba(var(--c1, 56,214,255), .7); }
+#camara-busca .x { width: 52px; height: 52px; font-size: 20px; }
+/* 👁 guardián de privacidad: la dirección también se difumina */
+body.guardia #dir, body.guardia #pest-lista { filter: blur(7px); }

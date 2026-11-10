@@ -416,7 +416,30 @@ public class MainActivity extends Activity {
 
     // ═══════════════════════════ ✋ detector de manos para los gestos (7,5 MB, se baja la primera vez) ═══════════════════════════
     static final String GESTOS_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+    // 👁 detector de caras (230 KB) para la pausa automática y el guardián de privacidad [09-nov]; si falla, los gestos siguen
+    static final String CARAS_URL = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+    void modeloCaras() {
+        File f = new File(getFilesDir(), "publico/gestos/blaze_face_short_range.tflite");
+        if (f.exists() && f.length() > 100_000) return;
+        f.getParentFile().mkdirs();
+        File tmp = new File(f.getPath() + ".bajando"); HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(CARAS_URL).openConnection(); c.setConnectTimeout(20000); c.setReadTimeout(60000);
+            if (c.getResponseCode() != 200) return;
+            try (InputStream in = c.getInputStream(); FileOutputStream o = new FileOutputStream(tmp)) { byte[] b = new byte[65536]; int n; while ((n = in.read(b)) > 0) o.write(b, 0, n); }
+            if (tmp.length() < 100_000 || !tmp.renameTo(f)) tmp.delete();
+        } catch (Exception e) { tmp.delete(); }
+        finally { if (c != null) c.disconnect(); }
+    }
+    Locale localeVoz(String lang) {
+        String l = lang == null ? "en" : lang.toLowerCase(Locale.ROOT);
+        if (l.startsWith("es")) return new Locale("es", "US");
+        if (l.startsWith("en")) return l.startsWith("en-gb") ? Locale.UK : Locale.US;
+        if (l.startsWith("pt")) return new Locale("pt", "BR");
+        return Locale.forLanguageTag(l);
+    }
     synchronized Object modeloGestos() {
+        modeloCaras();
         File f = new File(getFilesDir(), "publico/gestos/hand_landmarker.task");
         if (f.exists() && f.length() > 5_000_000) return resultado(true, null);
         File tmp = new File(f.getPath() + ".bajando");
@@ -575,12 +598,14 @@ public class MainActivity extends Activity {
                 case "tts": {
                     if (!ttsListo) return false;
                     String lang = d.optString("lang", "en");
-                    tts.setLanguage(lang.startsWith("es") ? new Locale("es", "US") : lang.startsWith("en") ? Locale.UK : Locale.forLanguageTag(lang));
-                    tts.setSpeechRate((float) d.optDouble("velocidad", 1.0)); tts.setPitch(0.92f);
+                    boolean nativa = d.optBoolean("nativa");   // 🗣 doblaje [09-nov]: voz nativa del idioma, tono normal
+                    tts.setLanguage(nativa ? localeVoz(lang) : lang.startsWith("es") ? new Locale("es", "US") : lang.startsWith("en") ? Locale.UK : Locale.forLanguageTag(lang));
+                    tts.setSpeechRate((float) d.optDouble("velocidad", 1.0)); tts.setPitch(nativa ? 1.0f : 0.92f);
                     tts.speak(d.optString("texto"), d.optBoolean("cola") ? TextToSpeech.QUEUE_ADD : TextToSpeech.QUEUE_FLUSH, null, "j" + System.nanoTime());
                     return true;
                 }
                 case "tts-parar": if (tts != null) tts.stop(); return true;
+                case "tts-idioma": { if (!ttsListo) return false; int r = tts.isLanguageAvailable(localeVoz(d.optString("lang", "en"))); return r >= TextToSpeech.LANG_AVAILABLE; }   // ¿hay voz nativa instalada?
                 case "hablando": return tts != null && tts.isSpeaking();
                 case "notificar": {
                     if (Build.VERSION.SDK_INT >= 33 && !tiene(Manifest.permission.POST_NOTIFICATIONS)) { requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, PIDE_PERMISO); return false; }

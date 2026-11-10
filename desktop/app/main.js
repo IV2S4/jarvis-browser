@@ -130,7 +130,7 @@ function estado() {
     actualizacion: nuevaVersion ? nuevaVersion.version : '', version: app.getVersion(),
     terminal: cfg.terminal !== false, mando: mandoAbierto(), tema: cfg.tema || 'cian', dictado: cfg.dictado !== false,
     documento: Boolean(cfg.documentos !== false && p && !p.privada && (p.esPdf || esPdfUrl(urlDe(p)))),
-    gestos: Boolean(cfg.gestos), camaraGestos: cfg.camaraGestos || '', gestosVista: cfg.gestosVista !== false, local: Boolean(cfg.cerebroLocal),
+    gestos: Boolean(cfg.gestos), camaraGestos: cfg.camaraGestos || '', gestosVista: cfg.gestosVista !== false, camaraPausa: cfg.camaraPausa !== false, camaraGuardian: cfg.camaraGuardian !== false, lanzarTelefono: cfg.lanzarTelefono !== false, local: Boolean(cfg.cerebroLocal),
     favorito: w ? datos.favoritos.some((f) => f.url === w.getURL()) : false, favoritos: datos.favoritos,
   };
 }
@@ -325,6 +325,18 @@ function nueva(url, activar = true, privada = false) {
     nueva(u, disposition !== 'background-tab', p.privada); return { action: 'deny' };
   });
   w.on('did-navigate', (_e, u) => { if (!p.privada && cfg.guardarHistorial) proteccion.historial.anotar(u, w.getTitle()); });
+  // 🧠 memoria del navegador [09-nov]: un pedacito del texto de cada página, para encontrarla después por lo que tenía
+  const recordar = () => {
+    if (p.privada || !cfg.guardarHistorial || cfg.memoriaNavegador === false) return;
+    clearTimeout(p.recordarT);
+    p.recordarT = setTimeout(async () => {
+      if (w.isDestroyed()) return;
+      const u = w.getURL(); if (!/^https?:/.test(u)) return;
+      try { recuerdos.anotar(u, await w.executeJavaScript(recuerdos.JS_PAGINA, true)); } catch { /* */ }
+    }, 3500);
+  };
+  w.on('did-finish-load', recordar);
+  w.on('did-navigate-in-page', (_e, _u, principal) => { if (principal) recordar(); });
   w.on('page-title-updated', (_e, t) => { if (!p.privada && cfg.guardarHistorial) proteccion.historial.titulo(w.getURL(), t); });
   w.once('dom-ready', () => { if (cfg.zoom && cfg.zoom !== 100) w.setZoomFactor(cfg.zoom / 100); });
   w.on('dom-ready', () => extensiones.inyectar(w, cfg.extensionesApagadas));
@@ -1023,6 +1035,18 @@ async function herramienta(n, a) {
     case 'send_to_phone': return { salida: await enviarTelefono({ tipo: a.what === 'screenshot' ? 'captura' : 'pagina', nota: a.note }) };
     case 'youtube_subtitles': return { salida: await subtitulos(a.on !== false, a.language) };
     case 'watch_page': { const r = await vigilarActual(a.what === 'changes' ? 'cambios' : 'precio', a.target_price); return { salida: r }; }
+    case 'browser_memory': {   // 🧠 [09-nov]
+      if (cfg.memoriaNavegador === false || !cfg.guardarHistorial) return { salida: { ok: false, error: 'Browser memory is turned off in Settings.' } };
+      const l = recuerdos.buscar(a.query || '', 12);
+      return { salida: { ok: true, total: l.length, paginas: l, nota: 'Answer with the best matches: for each one write its title, when they saw it, and its full URL (so it becomes a clickable link).' } };
+    }
+    case 'live_dubbing': return { salida: await doblaje(a.on !== false, a.language) };   // 🗣 [09-nov]
+    case 'look_through_camera': {   // 📸 busca lo que ves [09-nov]
+      if (cfg.buscaLoQueVes === false) return { salida: { ok: false, error: '«Search what you see» is turned off in Settings.' } };
+      let r = null; try { r = await win.webContents.executeJavaScript('window.fotoCamara ? window.fotoCamara() : null', true); } catch { /* */ }
+      if (!r || !r.ok) return { salida: { ok: false, error: (r && r.error) || 'Could not use the camera.' } };
+      return { salida: { ok: true, nota: 'This is a photo from the user\'s camera. Say what the object is (brand/model if visible) and use web_search to find it (where to buy, price or info) when useful.' }, imagen: { mime: 'image/jpeg', data: r.data } };
+    }
     case 'browser_history': {
       if (!cfg.guardarHistorial) return { salida: { ok: false, error: 'History is turned off in settings.' } };
       const desde = a.days ? Date.now() - a.days * 864e5 : 0;
@@ -1200,6 +1224,79 @@ async function subtitulos(on = true, lang, w = wc(), auto = false) {
   if (r === 'sin-reproductor' || r === 'error') return { ok: false, error: 'No encontré el reproductor de YouTube en esta página.' };
   return { ok: true, estado: r.split(':')[0], desde: r.split(':')[1] || '' };
 }
+// ══ 🗣 Doblaje en vivo [09-nov]: JARVIS lee en voz alta los subtítulos (traducidos) y baja el video ══
+// En YouTube pone primero los subtítulos traducidos a tu idioma; en otras páginas usa los subtítulos que tenga el video.
+function jsDoblaje(on) {
+  return `(() => {
+    const D = window.__jarvisDoblaje || (window.__jarvisDoblaje = { salida: [], ultimo: '', buf: '', bufT: 0, vol: null, reloj: 0, activo: false });
+    const vid = () => document.querySelector('#movie_player video') || [...document.querySelectorAll('video')].find((v) => !v.paused) || document.querySelector('video');
+    if (!${Boolean(on)}) { D.activo = false; clearInterval(D.reloj); D.reloj = 0; const v = vid(); if (v && D.vol != null) v.volume = D.vol; D.vol = null; D.salida = []; D.buf = ''; D.ultimo = ''; return 'apagado'; }
+    const v0 = vid(); if (!v0) return 'sin-video';
+    D.activo = true;
+    const leer = () => {
+      const v = vid(); let t = [...document.querySelectorAll('.ytp-caption-segment')].map((e) => e.textContent).join(' ');
+      if (!t) { const l = document.querySelectorAll('.caption-visual-line'); t = [...(l.length ? l : document.querySelectorAll('.captions-text'))].map((e) => e.textContent).join(' '); }
+      if (!t && v && v.textTracks) for (const tr of v.textTracks) { if (tr.mode === 'disabled') tr.mode = 'hidden'; if (tr.activeCues) t += ' ' + [...tr.activeCues].map((c) => c.text).join(' '); }
+      return t.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();
+    };
+    const nuevo = (antes, ahora) => { const a = antes.split(' '), b = ahora.split(' '); for (let k = Math.min(a.length, b.length); k > 0; k--) if (a.slice(a.length - k).join(' ') === b.slice(0, k).join(' ')) return b.slice(k).join(' '); return ahora; };
+    clearInterval(D.reloj);
+    D.reloj = setInterval(() => {
+      const v = vid(); if (!D.activo || !v) return;
+      if (v.volume > 0.151) { D.vol = v.volume; v.volume = 0.15; }   // el original, bajito
+      const t = leer();
+      if (t && t !== D.ultimo) { const n = nuevo(D.ultimo, t); D.ultimo = t; if (n) { D.buf = (D.buf ? D.buf + ' ' : '') + n; D.bufT = Date.now(); } }
+      if (D.buf && (/[.!?…]$/.test(D.buf) || Date.now() - D.bufT > 1000 || D.buf.split(' ').length > 16)) { D.salida.push(D.buf); D.buf = ''; if (D.salida.length > 6) D.salida.splice(0, D.salida.length - 6); }
+    }, 250);
+    return 'encendido';
+  })()`;
+}
+const JS_DOBLAJE_SACAR = `(() => { const d = window.__jarvisDoblaje; if (!d || !d.activo) return null; const v = document.querySelector('#movie_player video') || document.querySelector('video'); return { lineas: d.salida.splice(0), pausado: !v || v.paused }; })()`;
+let doblajeW = null; let doblajeReloj = 0; let doblajeUrl = '';
+async function doblaje(on = true, lang) {
+  if (cfg.doblajeEnVivo === false) return { ok: false, error: 'El doblaje en vivo está apagado en Configuración › Funciones inteligentes.' };
+  if (!on) { pararDoblaje(); return { ok: true, estado: 'apagado' }; }
+  const w = wc(); if (!w || w.isDestroyed()) return { ok: false, error: 'No hay página.' };
+  const L = String(lang || codIdioma(cfg) || 'es').slice(0, 2).toLowerCase();
+  let sub = null;
+  if (esVideoYT(w.getURL())) {
+    if (await hayAnuncioYT(w)) {   // durante un anuncio YouTube no tiene los subtítulos: empieza solo al terminar
+      (async () => { for (let i = 0; i < 60 && await hayAnuncioYT(w); i++) await pausa(2000); if (!w.isDestroyed() && cfg.doblajeEnVivo !== false) doblaje(true, L).catch(() => {}); })();
+      return { ok: true, estado: 'esperando que termine el anuncio', nota: 'An ad is playing: dubbing starts by itself when it ends.' };
+    }
+    for (let i = 0; i < 3; i++) { sub = await subtitulos(true, L, w); if (sub.ok) break; await pausa(2500); }
+    if (!sub.ok) return sub;
+  }
+  let r = 'error'; try { r = await w.executeJavaScript(jsDoblaje(true), true); } catch { /* */ }
+  if (r === 'sin-video') return { ok: false, error: 'No veo ningún video en esta página.' };
+  if (r !== 'encendido') return { ok: false, error: 'No pude empezar el doblaje en esta página.' };
+  if (doblajeW && doblajeW !== w && !doblajeW.isDestroyed()) doblajeW.executeJavaScript(jsDoblaje(false), true).catch(() => {});
+  doblajeW = w; doblajeUrl = w.getURL(); clearInterval(doblajeReloj);
+  doblajeReloj = setInterval(async () => {
+    if (!doblajeW || doblajeW.isDestroyed()) return pararDoblaje();
+    const u = doblajeW.getURL();
+    if (u !== doblajeUrl) {   // otro video de YouTube en la misma pestaña: subtítulos de nuevo
+      doblajeUrl = u;
+      if (esVideoYT(u)) {
+        const ww = doblajeW;
+        (async () => { await pausa(2500); for (let i = 0; i < 60 && !ww.isDestroyed() && await hayAnuncioYT(ww); i++) await pausa(2000); if (doblajeW === ww && !ww.isDestroyed()) subtitulos(true, L, ww).catch(() => {}); })();
+      }
+    }
+    let x = null; try { x = await doblajeW.executeJavaScript(JS_DOBLAJE_SACAR, true); } catch { return; }
+    if (x === null) { try { await doblajeW.executeJavaScript(jsDoblaje(true), true); } catch { /* */ } return; }   // la página se recargó: seguir
+    if (x.pausado) aviso('doblaje', { callar: true, lang: L }); else if (x.lineas.length) aviso('doblaje', { lineas: x.lineas, lang: L });
+  }, 400);
+  aviso('doblaje', { on: true, lang: L });
+  return { ok: true, estado: 'encendido', subtitulos: sub ? sub.estado : 'de la página', idioma: L };
+}
+async function hayAnuncioYT(w) {
+  try { return await w.executeJavaScript("!!document.querySelector('#movie_player.ad-showing, #movie_player.ad-interrupting')", true); } catch { return false; }
+}
+function pararDoblaje() {
+  clearInterval(doblajeReloj); doblajeReloj = 0;
+  if (doblajeW && !doblajeW.isDestroyed()) doblajeW.executeJavaScript(jsDoblaje(false), true).catch(() => {});
+  doblajeW = null; aviso('doblaje', { on: false });
+}
 const subtAuto = new WeakMap();
 function subtitulosAlCargar(w) {
   if (!cfg.subtitulosAuto || !esVideoYT(w.getURL())) return;
@@ -1240,7 +1337,21 @@ async function modeloVoz() {
 const GESTOS_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 const GESTOS_MODELO = path.join(CONF, 'gestos', 'hand_landmarker.task');
 let bajandoGestos = null;
+// 👁 detector de caras (230 KB) para la pausa automática y el guardián de privacidad [09-nov]
+const CARAS_URL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
+const CARAS_MODELO = path.join(CONF, 'gestos', 'blaze_face_short_range.tflite');
+async function modeloCaras() {   // si falla no pasa nada: los gestos siguen funcionando
+  try { if (fs.statSync(CARAS_MODELO).size > 100e3) return; } catch { /* no está */ }
+  try {
+    fs.mkdirSync(path.dirname(CARAS_MODELO), { recursive: true });
+    const r = await fetch(CARAS_URL, { signal: AbortSignal.timeout(60000) });
+    if (!r.ok) return;
+    const b = Buffer.from(await r.arrayBuffer());
+    if (b.length > 100e3) { fs.writeFileSync(CARAS_MODELO + '.bajando', b); fs.renameSync(CARAS_MODELO + '.bajando', CARAS_MODELO); }
+  } catch { /* sin internet */ }
+}
 async function modeloGestos() {
+  await modeloCaras();
   try { if (fs.statSync(GESTOS_MODELO).size > 5e6) return { ok: true }; } catch { /* no está */ }
   if (!bajandoGestos) {
     bajandoGestos = (async () => {
@@ -1270,9 +1381,37 @@ async function gesto(g) {
       if (w) return w.executeJavaScript('(() => { const vs = [...document.querySelectorAll("video")]; const v = vs.find((x) => !x.paused) || vs.find((x) => x.offsetWidth > 0) || vs[0]; if (!v) return false; if (v.paused) v.play(); else v.pause(); return true; })()', true).catch(() => false);
       break;
     }
+    // 👁 con la cámara encendida [09-nov]: te vas → pausa; vuelves → sigue; otra cara mirando → página tapada
+    case 'lanzar': return cfg.lanzarTelefono === false ? { ok: false, error: 'off' } : enviarTelefono({});   // 📲 [09-nov]
+    case 'ausente': return enTodas(JS_AUSENTE);
+    case 'presente': return enTodas(JS_PRESENTE);
+    case 'guardia': return enTodas(jsGuardia());
+    case 'guardia-off': return enTodas(JS_GUARDIA_FUERA);
     default: return false;
   }
   return true;
+}
+const JS_AUSENTE = `(() => { let n = 0; for (const v of document.querySelectorAll('video,audio')) if (!v.paused && !v.ended) { v.pause(); v.setAttribute('data-jarvis-ausente', '1'); n++; } return n; })()`;
+const JS_PRESENTE = `(() => { let n = 0; for (const v of document.querySelectorAll('[data-jarvis-ausente]')) { v.removeAttribute('data-jarvis-ausente'); const p = v.play(); if (p && p.catch) p.catch(() => {}); n++; } return n; })()`;
+const JS_GUARDIA_FUERA = `(() => { clearTimeout(window.__jarvisGuardiaT); const x = document.getElementById('__jarvis_guardia'); if (x) x.remove(); return 0; })()`;
+// la tapa se quita sola a los 3,5 s si nadie la renueva (así no se queda pegada en ninguna pestaña)
+function jsGuardia() {
+  const txt = codIdioma(cfg) === 'es' ? '👁  Alguien más está mirando tu pantalla\nLa página se ve cuando se vaya' : '👁  Someone else is looking at your screen\nThe page comes back when they leave';
+  return `(() => { let d = document.getElementById('__jarvis_guardia');
+    if (!d) { d = document.createElement('div'); d.id = '__jarvis_guardia';
+      for (const [k, v] of [['position', 'fixed'], ['inset', '0'], ['z-index', '2147483647'], ['display', 'flex'], ['align-items', 'center'], ['justify-content', 'center'],
+        ['background', 'rgba(3,8,14,.55)'], ['backdrop-filter', 'blur(30px)'], ['-webkit-backdrop-filter', 'blur(30px)'], ['color', '#38d6ff'], ['font', '600 20px system-ui,sans-serif'],
+        ['text-align', 'center'], ['white-space', 'pre-line'], ['padding', '24px'], ['pointer-events', 'none'], ['text-shadow', '0 0 12px rgba(56,214,255,.6)']]) d.style.setProperty(k, v, 'important');
+      d.textContent = ${JSON.stringify(txt)}; document.documentElement.appendChild(d); }
+    clearTimeout(window.__jarvisGuardiaT); window.__jarvisGuardiaT = setTimeout(() => { const x = document.getElementById('__jarvis_guardia'); if (x) x.remove(); }, 3500); return 1; })()`;
+}
+function vistasTodas() {
+  return [...pestanas.filter((p) => p.vista && !p.dormida).map((p) => p.vista.webContents), mini && !mini.isDestroyed() ? mini.webContents : null]
+    .filter((w) => w && !w.isDestroyed());
+}
+async function enTodas(js) {
+  const r = await Promise.all(vistasTodas().map((w) => w.executeJavaScript(js, true).catch(() => 0)));
+  return r.reduce((a, b) => a + (Number(b) || 0), 0);
 }
 
 // ══ Cyber HUD: escáner de amenazas, mapa de conexiones, monitor del sistema, efectos y «clip that» [04-nov] ══
@@ -1368,6 +1507,7 @@ function descargas(ses) {
 // ════════════════════════════════════════════════════════════════════════
 const antivirus = require('./lib/antivirus');
 const memoria = require('./lib/memoria');
+const recuerdos = require('./lib/recuerdos');   // 🧠 memoria del navegador [09-nov]
 const net = require('net');
 const dnsP = require('dns').promises;
 
@@ -1712,7 +1852,7 @@ ipcMain.handle('nav-config', async (_e, accion, d) => {
 });
 async function borrarDatos(o) {
   const desde = o.periodo ? Date.now() - o.periodo : 0;
-  if (o.historial) proteccion.historial.borrar(desde);
+  if (o.historial) { proteccion.historial.borrar(desde); recuerdos.borrar(desde); }
   for (const ses of [session.fromPartition('persist:jarvis'), session.fromPartition('jarvis-privado')]) {
     if (o.cache) await ses.clearCache();
     if (o.cookies) await ses.clearStorageData({ storages: ['cookies', 'localstorage', 'indexdb', 'serviceworkers', 'cachestorage', 'websql'] });
@@ -1848,6 +1988,7 @@ ipcMain.handle('nav', async (_e, accion, d) => {
     case 'chat-nuevo': cerebro.olvidar(); return true;
     case 'leer-voz': { const pag = await control('leer'); return backend('/api/decir', { texto: (pag.texto || '').slice(0, 1500) }, 8000); }
     case 'tts': return vozBytes(String(d || '').slice(0, 600));
+    case 'tts-doblaje': return cerebro.vozDoblaje(String((d && d.texto) || '').slice(0, 1000), (d && d.lang) || 'es');   // 🗣 voz nativa [09-nov]
     case 'leyendo': leyendo = Boolean(d); avisarEstado(); return true;
     case 'leer-pagina': return control('leer-desde', { desde: '' });
     case 'foto-pagina': return control('foto-pagina');
@@ -1916,8 +2057,8 @@ app.whenReady().then(() => {
       const u = new URL(req.url);
       if (u.hostname === 'gestos') {   // detector de manos (MediaPipe) para el control con gestos [04-nov]
         const nombre = decodeURIComponent(u.pathname).replace(/^\/+/, '');
-        if (!/^(vision_bundle\.mjs|wasm\/vision_wasm(_nosimd)?_internal\.(js|wasm)|hand_landmarker\.task)$/.test(nombre)) return new Response('', { status: 404, headers: cors });
-        const ruta = nombre === 'hand_landmarker.task' ? GESTOS_MODELO : path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision', nombre);
+        if (!/^(vision_bundle\.mjs|wasm\/vision_wasm(_nosimd)?_internal\.(js|wasm)|hand_landmarker\.task|blaze_face_short_range\.tflite)$/.test(nombre)) return new Response('', { status: 404, headers: cors });
+        const ruta = nombre === 'hand_landmarker.task' ? GESTOS_MODELO : nombre === 'blaze_face_short_range.tflite' ? CARAS_MODELO : path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision', nombre);
         const tipo = nombre.endsWith('.wasm') ? 'application/wasm' : /\.m?js$/.test(nombre) ? 'text/javascript' : 'application/octet-stream';
         return new Response(await fs.promises.readFile(ruta), { headers: { 'Content-Type': tipo, ...cors } });
       }

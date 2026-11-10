@@ -40,10 +40,11 @@ All of it comes with a futuristic HUD interface, an ad blocker, a threat scanner
 5. [Talking to JARVIS](#talking-to-jarvis)
 6. [Keyboard shortcuts (PC)](#keyboard-shortcuts-pc)
 7. [Gesture control (PC)](#gesture-control-pc)
-8. [Privacy: what leaves your device](#privacy-what-leaves-your-device)
-9. [Requirements, limitations and troubleshooting](#requirements-limitations-and-troubleshooting)
-10. [Build it yourself](#build-it-yourself)
-11. [License](#license)
+8. [Smart features](#smart-features)
+9. [Privacy: what leaves your device](#privacy-what-leaves-your-device)
+10. [Requirements, limitations and troubleshooting](#requirements-limitations-and-troubleshooting)
+11. [Build it yourself](#build-it-yourself)
+12. [License](#license)
 
 ---
 
@@ -111,6 +112,7 @@ The phone version has almost all of the above, adapted for touch:
 - **Floating video (picture-in-picture)** that keeps playing with sound, with ⏪ ⏯ ⏩ buttons in the floating window — from the menu (▣) or automatically when you leave the app, desktop mode, text zoom, sharing and default browser.
 - Phone monitor (battery, RAM, network), terminal, price watcher, Telegram, memory, themes, and your PC's local brain over WiFi.
 - **Gesture control** with the phone's front camera (☰ › Gesture control to turn it on and off).
+- **Smart features**: auto pause, privacy guard, browser memory, live dubbing with native voices and "what is this?" with the back camera (see [Smart features](#smart-features)).
 - **Settings backup** encrypted with your own password, to move your keys and settings to another phone.
 
 <div align="center">
@@ -234,6 +236,24 @@ Tip: start with ✌ and ☝ (scroll down and up), they're the easiest; switching
 | 👍 Thumbs up (1 s) | Call JARVIS (microphone) |
 | ✊ Closed fist (1.5 s) | Close tab |
 | 🤏 Pinch, then move your hand up or down | Zoom in / out |
+| ✊ then 🖐 Grab the page and throw it sideways opening your hand | Send the page to your phone (PC) |
+
+---
+
+## Smart features
+
+Each one has its own switch in **Settings › 🚀 Smart features** (on PC: Settings, Cyber HUD and Smart features cards; on Android: Settings › Smart features).
+
+| Feature | How to use it | Where |
+|---|---|---|
+| 💤 **Auto pause** | With the gesture camera on: get up and leave, and the video pauses; come back and it keeps playing. | PC and Android |
+| 👁 **Privacy guard** | With the gesture camera on: if someone else appears looking at your screen, the page is covered (and the address bar blurred) until they leave. | PC and Android |
+| 📲 **Throw to phone** | Close your hand ✊ as if grabbing the page and throw it sideways opening your hand 🖐: the page arrives on your phone via Telegram. | PC |
+| 🧠 **Browser memory** | *"Jarvis, where did I see some red sneakers?"* — JARVIS finds the page by what it contained, not just its title. A short piece of each page's text is kept **only on your device** (never private tabs, banks, email or pages with password fields). Clearing history clears it too. | PC and Android |
+| 🗣 **Live dubbing** | On a video: *"Jarvis, dub this video into Spanish"* (or the 🗣 button on Android). JARVIS turns on the translated subtitles and reads them aloud with a **native voice of that language**, lowering the original sound. *"Jarvis, stop dubbing"* to stop. If an ad is playing it starts by itself when the ad ends. Works with videos that have subtitles (almost all of YouTube, even automatic ones). | PC and Android |
+| 📸 **Search what you see** | *"Jarvis, what is this?"* — on Android the back camera opens: point and tap 📸; on PC it takes a photo with your camera. JARVIS tells you what it is and searches for it. | PC and Android |
+
+**Native voices for dubbing:** JARVIS never reads a language with a foreign accent. On Android it uses the phone's Google voices. On PC it uses the Windows voice for that language — install it for free in Windows Settings › Time & language › Speech › Add voices — or, if not installed, your OpenAI or Gemini key. Without any of these it shows only the translated subtitles.
 
 ---
 
@@ -245,6 +265,7 @@ The browser has **no telemetry**: it sends no statistics and nothing about what 
 |---|---|---|
 | Your chosen AI (Google, Anthropic or OpenAI) | Your question, plus the page's text or a screenshot when the question needs it | Only when you talk to JARVIS |
 | Your own Telegram bot | The page or clip you send | Only when you ask |
+| Your chosen AI | A camera photo, only when you ask "what is this?"; dubbing lines, only if you use your AI key for the voice | Only when you ask |
 | VirusTotal (optional) | The downloaded file's hash, never the file | When a download finishes |
 | ip-api.com | The IP addresses of the page's servers, to draw the map | When you open the scanner |
 | Quad9 (optional) | The names of the sites you visit (secure DNS) | If you enable secure DNS |

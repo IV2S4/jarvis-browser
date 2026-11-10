@@ -18,7 +18,11 @@ function gChip(texto, clase = '') {
 }
 function gFeedback(icono, es, en) {
   gChip(`${icono} ${T(es, en)}`, 'accion'); H('vibrar', { ms: 15 });
-  clearTimeout(G.chipT); G.chipT = setTimeout(() => { if (G.activo) gChip('✋', 'listo'); }, 1300);
+  clearTimeout(G.chipT); G.chipT = setTimeout(gChipListo, 1300);
+}
+function gChipListo() {
+  if (!G.activo) return;
+  if (G.guardia) gChip('👁 ' + T('ALGUIEN MIRA', 'SOMEONE LOOKING'), 'error'); else gChip('✋', 'listo');
 }
 
 async function gCargar() {
@@ -35,6 +39,11 @@ async function gCargar() {
   G.vision = vision; G.archivos = archivos; G.opciones = opciones;
   try { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('CPU')); G.modo = 'CPU'; }
   catch { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('GPU')); G.modo = 'GPU'; }
+  // 👁 detector de caras (pausa automática y guardián de privacidad) [09-nov]; si falta, los gestos siguen igual
+  try {
+    G.caras = await vision.FaceDetector.createFromOptions(archivos, { baseOptions: { modelAssetPath: BASE_GESTOS + 'datos/gestos/blaze_face_short_range.tflite', delegate: 'CPU' },
+      runningMode: 'VIDEO', minDetectionConfidence: 0.6 });
+  } catch { G.caras = null; }
   return G.detector;
 }
 
@@ -52,13 +61,15 @@ async function gEncender() {
     G.video = document.createElement('video'); G.video.muted = true; G.video.playsInline = true; G.video.srcObject = G.stream;
     await G.video.play();
     G.activo = true; gChip('✋', 'listo'); toast(T('Gestos encendidos: muéstrale tu mano a la cámara de adelante', 'Gestures on: show your hand to the front camera'), 3500);
-    G.errores = 0; G.vistoMano = 0; G.reloj = setInterval(gCuadro, 90);
+    G.errores = 0; G.vistoMano = 0; G.vistoT = performance.now(); G.ausente = false; G.reloj = setInterval(gCuadro, 90);
   } catch (e) {
     gApagar(); toast('✋ ' + (e && e.name === 'NotAllowedError' ? T('La cámara está bloqueada', 'Camera is blocked') : String((e && e.message) || e)), 4000);
   } finally { G.cargando = false; }
 }
 function gApagar() {
   clearInterval(G.reloj); G.reloj = 0; G.activo = false;
+  if (G.guardia) gGuardia(false);
+  G.ausente = false; G.vistoT = 0;
   if (G.stream) G.stream.getTracks().forEach((t) => t.stop());   // apaga la cámara (y su lucecita)
   G.stream = null; G.video = null; G.rastro = []; G.pose = '';
   $('gestos-chip').hidden = true;
@@ -117,8 +128,9 @@ function gCuadro() {
     return;
   }
   const lm = res && res.landmarks && res.landmarks[0];
+  gVigilar(Boolean(lm), ahora);
   gDibujar(lm);
-  if (!lm) { G.pose = ''; G.rastro = []; if (G.vistoMano && ahora - G.vistoMano > 800 && $('gestos-chip').className === 'mano') gChip('✋', 'listo'); return; }
+  if (!lm) { G.pose = ''; G.rastro = []; if (G.vistoMano && ahora - G.vistoMano > 800 && $('gestos-chip').className === 'mano') gChipListo(); return; }
   const p = forma(lm);
   G.vistoMano = ahora;
   if ($('gestos-chip').className !== 'accion') gChip(({ palma: '✋', indice: '☝', victoria: '✌', puno: '✊', pulgar: '👍', pinza: '🤏' })[p] || '🖐', 'mano');   // así ves que te reconoce la mano
@@ -149,6 +161,48 @@ function gCuadro() {
     if (p === 'indice') { gHacer('arriba'); gFeedback('☝', 'ARRIBA', 'SCROLL UP'); } else { gHacer('abajo'); gFeedback('✌', 'ABAJO', 'SCROLL DOWN'); }
     G.repetir = ahora + 650;
   }
+}
+
+// ── 👁 la cámara también vigila [09-nov] (se apagan en Ajustes › Funciones inteligentes) ──
+//   💤 Pausa automática: si no hay nadie frente a la cámara 4 s, pausa el video; al volver, sigue solo.
+//   👁 Guardián de privacidad: si se ven 2 caras o más (alguien mirando tu teléfono), la página se tapa hasta que se vaya.
+const JS_AUSENTE = `(() => { let n = 0; for (const v of document.querySelectorAll('video,audio')) if (!v.paused && !v.ended) { v.pause(); v.setAttribute('data-jarvis-ausente', '1'); n++; } return n; })()`;
+const JS_PRESENTE = `(() => { let n = 0; for (const v of document.querySelectorAll('[data-jarvis-ausente]')) { v.removeAttribute('data-jarvis-ausente'); const p = v.play(); if (p && p.catch) p.catch(() => {}); n++; } return n; })()`;
+const JS_GUARDIA_FUERA = `(() => { clearTimeout(window.__jarvisGuardiaT); const x = document.getElementById('__jarvis_guardia'); if (x) x.remove(); return 0; })()`;
+function jsGuardia() {
+  const txt = T('👁  Alguien más está mirando tu pantalla\nLa página se ve cuando se vaya', '👁  Someone else is looking at your screen\nThe page comes back when they leave');
+  return `(() => { let d = document.getElementById('__jarvis_guardia');
+    if (!d) { d = document.createElement('div'); d.id = '__jarvis_guardia';
+      for (const [k, v] of [['position', 'fixed'], ['inset', '0'], ['z-index', '2147483647'], ['display', 'flex'], ['align-items', 'center'], ['justify-content', 'center'],
+        ['background', 'rgba(3,8,14,.55)'], ['backdrop-filter', 'blur(30px)'], ['-webkit-backdrop-filter', 'blur(30px)'], ['color', '#38d6ff'], ['font', '600 18px system-ui,sans-serif'],
+        ['text-align', 'center'], ['white-space', 'pre-line'], ['padding', '24px'], ['pointer-events', 'none']]) d.style.setProperty(k, v, 'important');
+      d.textContent = ${JSON.stringify(txt)}; document.documentElement.appendChild(d); }
+    clearTimeout(window.__jarvisGuardiaT); window.__jarvisGuardiaT = setTimeout(() => { const x = document.getElementById('__jarvis_guardia'); if (x) x.remove(); }, 3500); return 1; })()`;
+}
+function gVigilar(hayMano, ahora) {
+  const pausaOn = cfg.camaraPausa !== false; const guardiaOn = cfg.camaraGuardian !== false;
+  if (!G.caras || !(pausaOn || guardiaOn)) { if (G.guardia) gGuardia(false); return; }
+  if (ahora - (G.carasT || 0) < 350) return;
+  G.carasT = ahora;
+  let n = 0;
+  try { const r = G.caras.detectForVideo(G.video, ahora); n = ((r && r.detections) || []).filter((d) => !d.categories || !d.categories[0] || d.categories[0].score >= 0.6).length; }
+  catch { return; }
+  if (n > 0 || hayMano) {
+    G.vistoT = ahora;
+    if (G.ausente) { G.ausente = false; enPagina(JS_PRESENTE).then((k) => { if (k) gFeedback('👋', 'DE VUELTA: SIGUE', 'WELCOME BACK'); }); }
+  } else if (pausaOn && !G.ausente && G.vistoT && ahora - G.vistoT > 4000) {
+    G.ausente = true; enPagina(JS_AUSENTE).then((k) => { if (k) gFeedback('💤', 'TE FUISTE: PAUSA', 'AWAY: PAUSED'); });
+  }
+  if (guardiaOn && n >= 2) { G.unoT = 0; G.dosT = G.dosT || ahora; if (!G.guardia && ahora - G.dosT > 1200) gGuardia(true); }
+  else { G.dosT = 0; if (G.guardia) { G.unoT = G.unoT || ahora; if (!guardiaOn || ahora - G.unoT > 2000) gGuardia(false); } }
+  if (G.guardia && ahora - (G.guardiaT || 0) > 1500) { G.guardiaT = ahora; enPagina(jsGuardia()); }
+}
+function gGuardia(on) {
+  G.guardia = on; G.guardiaT = performance.now(); G.unoT = 0;
+  document.body.classList.toggle('guardia', on);
+  enPagina(on ? jsGuardia() : JS_GUARDIA_FUERA);
+  if (on) H('vibrar', { ms: 40 });
+  gChipListo();
 }
 
 // mini cámara en el chip: tu mano dibujada como esqueleto holográfico

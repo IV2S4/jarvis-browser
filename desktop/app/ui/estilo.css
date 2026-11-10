@@ -397,6 +397,7 @@ body.oyendo #b-jarvis .orbe { filter: drop-shadow(0 0 6px #3dffb5); }
 #gestos-chip.error b { color: #ff5c7a; }
 #gestos-chip.apagado { opacity: .55; }
 #gestos-chip.apagado:hover { opacity: 1; }
+body.guardia #pestanas, body.guardia #direccion { filter: blur(7px); }
 /* dictado y documentos [04-nov] */
 #dictado-chip { letter-spacing: 1px; color: rgb(var(--c1)); }
 #dictado-chip.grabando { color: #ff5c7a; animation: parpadeo 1s ease-in-out infinite; }

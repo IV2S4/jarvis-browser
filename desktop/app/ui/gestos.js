@@ -17,7 +17,11 @@ function gChip(texto, clase = '') {
 }
 function gFeedback(icono, es, en) {
   gChip(`${icono} ${T(es, en)}`, 'accion'); sonido('pestana');
-  clearTimeout(G.chipT); G.chipT = setTimeout(() => { if (G.activo) gChip('✋', 'listo'); }, 1300);
+  clearTimeout(G.chipT); G.chipT = setTimeout(gChipListo, 1300);
+}
+function gChipListo() {
+  if (!G.activo) return;
+  if (G.guardia) gChip('👁 ' + T('ALGUIEN MIRA', 'SOMEONE LOOKING'), 'error'); else gChip('✋', 'listo');
 }
 
 async function gCargar() {
@@ -30,6 +34,11 @@ async function gCargar() {
     minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.5 });
   try { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('GPU')); }
   catch { G.detector = await vision.HandLandmarker.createFromOptions(archivos, opciones('CPU')); }
+  // 👁 detector de caras (pausa automática y guardián de privacidad); si no está, los gestos siguen igual [09-nov]
+  try {
+    G.caras = await vision.FaceDetector.createFromOptions(archivos, { baseOptions: { modelAssetPath: 'jarvisvoz://gestos/blaze_face_short_range.tflite', delegate: 'CPU' },
+      runningMode: 'VIDEO', minDetectionConfidence: 0.6 });
+  } catch { G.caras = null; }
   return G.detector;
 }
 
@@ -44,6 +53,7 @@ async function gEncender() {
     G.video = document.createElement('video'); G.video.muted = true; G.video.playsInline = true; G.video.srcObject = G.stream;
     await G.video.play();
     G.activo = true; gChip('✋', 'listo');
+    G.vistoT = performance.now(); G.ausente = false;
     G.reloj = setInterval(gCuadro, 70);
   } catch (e) {
     G.error = String((e && (e.name === 'NotFoundError' ? T('No encuentro ninguna cámara', 'No camera found') : e.name === 'NotAllowedError' ? T('La cámara está bloqueada', 'Camera is blocked') : e.message)) || e);
@@ -53,6 +63,8 @@ async function gEncender() {
 }
 function gApagar(dejarChip) {
   clearInterval(G.reloj); G.reloj = 0; G.activo = false;
+  if (G.guardia) gGuardia(false);
+  G.ausente = false; G.vistoT = 0;
   if (G.stream) G.stream.getTracks().forEach((t) => t.stop());   // apaga la luz de la cámara
   G.stream = null; G.video = null; G.rastro = []; G.pose = '';
   if (!dejarChip) $('gestos-chip').hidden = true;
@@ -101,6 +113,7 @@ function gCuadro() {
   const ahora = performance.now();
   let res = null; try { res = G.detector.detectForVideo(G.video, ahora); } catch { return; }
   const lm = res && res.landmarks && res.landmarks[0];
+  gVigilar(Boolean(lm), ahora);
   if (E.gestosVista) gDibujar(lm);
   if (!lm) { G.pose = ''; G.rastro = []; return; }
   const p = forma(lm);
@@ -109,6 +122,17 @@ function gCuadro() {
   // deslizar la mano de lado (la imagen viene en espejo: la mano a tu derecha va hacia x más pequeño)
   G.rastro.push({ x: lm[9].x, y: lm[9].y, t: ahora }); G.rastro = G.rastro.filter((r) => ahora - r.t < 450);
   if (ahora < G.enfriar) return;
+  // 📲 lanzar al teléfono [09-nov]: ✊ agarras la página y la lanzas de lado abriendo la mano 🖐
+  if (p === 'puno' && quieto > 250) G.agarre = { t: ahora, x: lm[9].x };
+  if (E.lanzarTelefono && G.agarre && ['palma', 'otra'].includes(p) && ahora - G.agarre.t < 900 && Math.abs(lm[9].x - G.agarre.x) > 0.18) {
+    G.agarre = null; G.enfriar = ahora + 2500; G.rastro = []; G.poseDesde = ahora;
+    gFeedback('📲', 'LANZANDO…', 'THROWING…');
+    H('gesto', 'lanzar').then((r) => {
+      if (r && r.ok) gFeedback('📲', '¡EN TU TELÉFONO!', 'SENT TO YOUR PHONE!');
+      else gFeedback('⚠', r && r.configurar ? 'CONECTA EL TELÉFONO EN CONFIGURACIÓN' : 'NO SE PUDO ENVIAR', r && r.configurar ? 'CONNECT YOUR PHONE IN SETTINGS' : "COULDN'T SEND");
+    });
+    return;
+  }
   if (G.rastro.length >= 4 && ['palma', 'otra'].includes(p)) {
     const xs = G.rastro.map((r) => r.x); const ys = G.rastro.map((r) => r.y);
     const dx = G.rastro[G.rastro.length - 1].x - G.rastro[0].x; const dy = Math.max(...ys) - Math.min(...ys);
@@ -135,6 +159,56 @@ function gCuadro() {
     if (p === 'indice') { gHacer('arriba'); gFeedback('☝', 'ARRIBA', 'SCROLL UP'); } else { gHacer('abajo'); gFeedback('✌', 'ABAJO', 'SCROLL DOWN'); }
     G.repetir = ahora + 650;
   }
+}
+
+// ── 📸 Busca lo que ves [09-nov]: JARVIS toma una foto con la cámara (solo cuando se lo pides) ──
+window.fotoCamara = async () => {
+  let s = null;
+  try {
+    const pedir = (id) => navigator.mediaDevices.getUserMedia({ audio: false, video: { ...(id ? { deviceId: { exact: id } } : {}), width: { ideal: 1280 }, height: { ideal: 720 } } });
+    try { s = await pedir(E.camaraGestos); } catch (e) { if (!E.camaraGestos) throw e; s = await pedir(''); }
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = s; await v.play();
+    await new Promise((ok) => setTimeout(ok, 1200));   // que la cámara ajuste la luz
+    const c = document.createElement('canvas'); const w = v.videoWidth || 640; const h = v.videoHeight || 480; const k = Math.min(1, 1024 / w);
+    c.width = Math.round(w * k); c.height = Math.round(h * k); c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    sonido('pestana');
+    return { ok: true, data: c.toDataURL('image/jpeg', 0.85).split(',')[1] };
+  } catch (e) {
+    return { ok: false, error: e && e.name === 'NotAllowedError' ? 'The camera is blocked' : e && e.name === 'NotFoundError' ? 'No camera found' : String((e && e.message) || e) };
+  } finally { if (s) s.getTracks().forEach((t) => t.stop()); }
+};
+
+// ── 👁 la cámara también vigila [09-nov] ──
+//   💤 Pausa automática: si nadie está frente a la cámara 4 s, pausa lo que suena; al volver, sigue solo.
+//   👁 Guardián de privacidad: si se ven 2 caras o más (alguien detrás de ti), la página se tapa hasta que se vaya.
+function gVigilar(hayMano, ahora) {
+  if (!G.caras || !(E.camaraPausa || E.camaraGuardian)) { if (G.guardia) gGuardia(false); return; }
+  if (ahora - (G.carasT || 0) < 300) return;   // ~3 veces por segundo basta
+  G.carasT = ahora;
+  let n = 0;
+  try { const r = G.caras.detectForVideo(G.video, ahora); n = ((r && r.detections) || []).filter((d) => !d.categories || !d.categories[0] || d.categories[0].score >= 0.6).length; }
+  catch { return; }
+  if (n > 0 || hayMano) {
+    G.vistoT = ahora;
+    if (G.ausente) { G.ausente = false; H('gesto', 'presente').then((k) => { if (k) gFeedback('👋', 'DE VUELTA: SIGUE', 'WELCOME BACK'); }); }
+  } else if (E.camaraPausa && !G.ausente && G.vistoT && ahora - G.vistoT > 4000) {
+    G.ausente = true; H('gesto', 'ausente').then((k) => { if (k) gFeedback('💤', 'TE FUISTE: PAUSA', 'AWAY: PAUSED'); });
+  }
+  if (E.camaraGuardian && n >= 2) {
+    G.unoT = 0; G.dosT = G.dosT || ahora;
+    if (!G.guardia && ahora - G.dosT > 1200) gGuardia(true);
+  } else {
+    G.dosT = 0;
+    if (G.guardia) { G.unoT = G.unoT || ahora; if (!E.camaraGuardian || ahora - G.unoT > 2000) gGuardia(false); }
+  }
+  if (G.guardia && ahora - (G.guardiaT || 0) > 1500) { G.guardiaT = ahora; H('gesto', 'guardia'); }   // renueva la tapa (páginas nuevas, otra pestaña)
+}
+function gGuardia(on) {
+  G.guardia = on; G.guardiaT = performance.now(); G.unoT = 0;
+  document.body.classList.toggle('guardia', on);
+  H('gesto', on ? 'guardia' : 'guardia-off');
+  if (on) sonido('pestana');
+  gChipListo();
 }
 
 // mini cámara en la barra de abajo: tu mano dibujada como esqueleto holográfico

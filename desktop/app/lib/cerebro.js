@@ -389,6 +389,32 @@ async function voz(texto, cod, motor = 'auto') {
   return null;   // la interfaz habla con la voz de Windows
 }
 
+// 🗣 voz del doblaje en vivo [09-nov]: nativa del idioma (nada de acento extranjero). Con tu llave de OpenAI o de Gemini;
+// si no hay, null (la interfaz usa la voz de Windows de ese idioma si está instalada, o deja solo los subtítulos).
+const NOMBRE_EN = { es: 'Spanish (Latin American)', en: 'American English', pt: 'Brazilian Portuguese', fr: 'French', de: 'German', it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Mandarin Chinese', ru: 'Russian' };
+async function vozDoblaje(texto, cod = 'es') {
+  const k = cargarLlaves(); const L = String(cod).slice(0, 2).toLowerCase(); const idioma = NOMBRE_EN[L] || L;
+  if (k.openai) {
+    try {
+      const r = await fetch('https://api.openai.com/v1/audio/speech', { method: 'POST', signal: AbortSignal.timeout(20000),
+        headers: { Authorization: `Bearer ${k.openai}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice: 'onyx', input: String(texto).slice(0, 1000), response_format: 'mp3',
+          instructions: `You are a professional dubbing voice actor. Speak as a native ${idioma} speaker with a natural native accent. Lively, natural pace.` }) });
+      if (r.ok) return new Uint8Array(await r.arrayBuffer());
+    } catch { /* */ }
+  }
+  if (k.gemini && Date.now() > geminiVozPausa) {
+    try {
+      const j = await pedir('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent', { 'x-goog-api-key': k.gemini }, {
+        contents: [{ parts: [{ text: `Read this as a native ${idioma} dubbing voice actor, natural accent: ${String(texto).slice(0, 1000)}` }] }],
+        generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } } }, 20000);
+      const d = j?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData;
+      if (d && d.data) return new Uint8Array(wavDePcm(Buffer.from(d.data, 'base64')));
+    } catch (e) { if (e.status === 429) geminiVozPausa = Date.now() + 5 * 60000; }
+  }
+  return null;
+}
+
 // ── el agente: chat que maneja el navegador ─────────────────────────────
 const HERRAMIENTAS = [
   { nombre: 'open_url', desc: 'Open a web address in the current tab (or a new tab).', params: { type: 'object', properties: { url: { type: 'string' }, new_tab: { type: 'boolean' } }, required: ['url'] } },
@@ -414,6 +440,9 @@ const HERRAMIENTAS = [
   { nombre: 'split_screen', desc: 'Show two pages side by side (split screen), optionally opening a URL on the right. on=false to go back to one page.', params: { type: 'object', properties: { on: { type: 'boolean' }, url: { type: 'string' } } } },
   { nombre: 'picture_in_picture', desc: 'Pop the video of the current page out into a floating always-on-top window (or put it back).' },
   { nombre: 'watch_page', desc: 'Watch the current page in the background and notify the user if the price drops (what=price) or if something new appears (what=changes). Optional target_price.', params: { type: 'object', properties: { what: { type: 'string', enum: ['price', 'changes'] }, target_price: { type: 'number' } }, required: ['what'] } },
+  { nombre: 'browser_memory', desc: 'Search the user\'s browser memory: the text of pages they visited before (not just titles). Use it when the user asks where they saw something ("where did I see some red sneakers?", "that recipe I read last week"). Put keywords in the query in BOTH the user\'s language and English, with synonyms (e.g. "tenis rojos zapatillas red sneakers shoes").', params: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
+  { nombre: 'live_dubbing', desc: 'Live dubbing of the video in the current page: reads its subtitles aloud translated into a language (code like es, en) and lowers the original sound. on=false turns it off. Use for "dub this video", "dóblalo al español", "quita el doblaje".', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
+  { nombre: 'look_through_camera', desc: 'Take a photo with the user\'s camera to see a real object the user is showing (not the page). Use it for "what is this?", "¿qué es esto?", "busca esto que te enseño", "look at this". Then identify it and search it with web_search if useful.' },
   { nombre: 'send_to_phone', desc: 'Send the current page (link, or a screenshot) to the user\'s phone via Telegram. Optional short note.', params: { type: 'object', properties: { what: { type: 'string', enum: ['page', 'screenshot'] }, note: { type: 'string' } } } },
   { nombre: 'youtube_subtitles', desc: 'On a YouTube video, turn on live subtitles translated into a language (code like es, en, fr), or turn them off.', params: { type: 'object', properties: { on: { type: 'boolean' }, language: { type: 'string' } } } },
   { nombre: 'save_game_clip', desc: 'Save the last moments of the game the user is playing as a video clip (NVIDIA Instant Replay or Xbox Game Bar) and send it to their phone. Use for "clip that", "save that play".' },
@@ -422,7 +451,7 @@ const HERRAMIENTAS = [
 const ETIQUETAS = { open_url: 'Abriendo', web_search: 'Buscando', read_page: 'Leyendo la página', see_page: 'Mirando la página', click: 'Haciendo clic', type_text: 'Escribiendo',
   scroll: 'Desplazando', navigate: 'Navegando', tabs: 'Pestañas', walkthrough_page: 'Recorriendo la página', summarize_page: 'Resumiendo', translate_page: 'Traduciendo la página',
   read_aloud: 'Leyendo en voz alta', browser_history: 'Mirando el historial', list_tabs: 'Revisando las pestañas', read_tab: 'Leyendo otra pestaña',
-  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', youtube_subtitles: 'Subtítulos', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
+  split_screen: 'Pantalla dividida', save_game_clip: 'Guardando el clip', send_to_phone: 'Enviando al teléfono', browser_memory: 'Buscando en la memoria', live_dubbing: 'Doblaje en vivo', look_through_camera: 'Mirando por la cámara', youtube_subtitles: 'Subtítulos', picture_in_picture: 'Video flotante', watch_page: 'Vigilando la página', take_photo: 'Tomando la foto', zoom: 'Zoom', remember: 'Recordando', forget: 'Olvidando', find_in_page: 'Buscando en la página' };
 
 let historia = [];
 let turno = 0;
@@ -491,5 +520,5 @@ REMEMBER: whatever language the user writes in, your reply is in ${idiomaDe(h.co
   return { texto: 'I did as much as I could in one go, sir (30 steps). Shall I continue?' };
 }
 
-module.exports = { PROVEEDORES, SECRETOS, ponerLlave, estadoLlaves, hayAlguna, llave: (n) => cargarLlaves()[n] || '', pensar, preguntarPagina, describirPagina, describirParte, resumir, traducirLista,
+module.exports = { vozDoblaje, PROVEEDORES, SECRETOS, ponerLlave, estadoLlaves, hayAlguna, llave: (n) => cargarLlaves()[n] || '', pensar, preguntarPagina, describirPagina, describirParte, resumir, traducirLista,
   transcribir, voz, chat, olvidar, parar, diagnostico, ultimo: () => ultimoUsado, idiomaDe, NOMBRE_IDIOMA, configurarLocal, localVivo };

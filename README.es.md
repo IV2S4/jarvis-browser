@@ -40,10 +40,11 @@ Todo con una interfaz estilo HUD futurista, bloqueador de anuncios, escáner de 
 5. [Cómo hablarle a JARVIS](#cómo-hablarle-a-jarvis)
 6. [Atajos de teclado (PC)](#atajos-de-teclado-pc)
 7. [Control con gestos (PC)](#control-con-gestos-pc)
-8. [Privacidad: qué sale de tu equipo y qué no](#privacidad-qué-sale-de-tu-equipo-y-qué-no)
-9. [Requisitos, limitaciones y problemas comunes](#requisitos-limitaciones-y-problemas-comunes)
-10. [Construirlo tú mismo (código fuente)](#construirlo-tú-mismo-código-fuente)
-11. [Licencia](#licencia)
+8. [Funciones inteligentes](#funciones-inteligentes)
+9. [Privacidad: qué sale de tu equipo y qué no](#privacidad-qué-sale-de-tu-equipo-y-qué-no)
+10. [Requisitos, limitaciones y problemas comunes](#requisitos-limitaciones-y-problemas-comunes)
+11. [Construirlo tú mismo (código fuente)](#construirlo-tú-mismo-código-fuente)
+12. [Licencia](#licencia)
 
 ---
 
@@ -111,6 +112,7 @@ La versión del teléfono tiene casi todo lo anterior, acomodado para pantalla t
 - **Video flotante** que sigue sonando, con botones ⏪ ⏯ ⏩ en la ventanita — desde el menú (▣) o solo al salir de la app, modo escritorio, zoom del texto, compartir y navegador predeterminado.
 - Monitor del teléfono (batería, RAM, internet), terminal, vigilante de precios, Telegram, memoria, temas y el cerebro local de tu PC por WiFi.
 - **Control con gestos** con la cámara de adelante del teléfono (☰ › Control con gestos para encenderlo y apagarlo).
+- **Funciones inteligentes**: pausa automática, guardián de privacidad, memoria del navegador, doblaje en vivo con voces nativas y "¿qué es esto?" con la cámara de atrás (mira [Funciones inteligentes](#funciones-inteligentes)).
 - **Respaldo de ajustes** cifrado con tu propia clave, para pasar tus llaves y ajustes a otro teléfono.
 
 <div align="center">
@@ -234,6 +236,24 @@ Consejo: empieza con ✌ y ☝ (bajar y subir), que son los más fáciles; para 
 | 👍 Pulgar arriba (1 s) | Llamar a JARVIS (micrófono) |
 | ✊ Puño cerrado (1,5 s) | Cerrar la pestaña |
 | 🤏 Pellizco y subir o bajar la mano | Zoom más / menos |
+| ✊ y luego 🖐 Agarrar la página y lanzarla de lado abriendo la mano | Manda la página a tu teléfono (PC) |
+
+---
+
+## Funciones inteligentes
+
+Cada una tiene su propio interruptor en **Ajustes › 🚀 Funciones inteligentes** (en la PC: Configuración, tarjetas de Cyber HUD y Funciones inteligentes; en Android: Ajustes › Funciones inteligentes).
+
+| Función | Cómo se usa | Dónde |
+|---|---|---|
+| 💤 **Pausa automática** | Con la cámara de los gestos encendida: te paras y te vas, y el video se pausa; vuelves y sigue solo. | PC y Android |
+| 👁 **Guardián de privacidad** | Con la cámara de los gestos encendida: si otra persona aparece mirando tu pantalla, la página se tapa (y la barra de direcciones se difumina) hasta que se vaya. | PC y Android |
+| 📲 **Lanzar al teléfono** | Cierra la mano ✊ como si agarraras la página y lánzala de lado abriendo la mano 🖐: la página te llega al teléfono por Telegram. | PC |
+| 🧠 **Memoria del navegador** | *"Jarvis, ¿dónde vi unos tenis rojos?"* — JARVIS encuentra la página por lo que tenía, no solo por el título. Se guarda un pedacito del texto de cada página **solo en tu equipo** (nunca pestañas privadas, bancos, correo ni páginas con contraseña). Al borrar el historial también se borra. | PC y Android |
+| 🗣 **Doblaje en vivo** | En un video: *"Jarvis, dobla este video al español"* (o el botón 🗣 en Android). JARVIS pone los subtítulos traducidos y los lee en voz alta con una **voz nativa de ese idioma**, bajando el sonido original. *"Jarvis, quita el doblaje"* para pararlo. Si hay un anuncio, empieza solo cuando termine. Funciona con videos que tengan subtítulos (casi todo YouTube, aunque sean automáticos). | PC y Android |
+| 📸 **Busca lo que ves** | *"Jarvis, ¿qué es esto?"* — en Android se abre la cámara de atrás: apuntas y tocas 📸; en la PC toma una foto con tu cámara. JARVIS te dice qué es y lo busca. | PC y Android |
+
+**Voces nativas para el doblaje:** JARVIS nunca lee un idioma con acento extranjero. En Android usa las voces de Google del teléfono. En la PC usa la voz de Windows de ese idioma — se instala gratis en Configuración de Windows › Hora e idioma › Voz › Agregar voces — o, si no está, tu llave de OpenAI o Gemini. Sin ninguna de esas, deja solo los subtítulos traducidos.
 
 ---
 
@@ -245,6 +265,7 @@ El navegador **no tiene telemetría**: no manda estadísticas, ni lo que haces, 
 |---|---|---|
 | La IA que elijas (Google, Anthropic u OpenAI) | Tu pregunta, y el texto o una foto de la página si la pregunta lo necesita | Solo cuando le hablas a JARVIS |
 | Tu propio bot de Telegram | La página o el clip que mandas | Solo cuando lo pides |
+| Tu IA elegida | Una foto de la cámara, solo cuando preguntas "¿qué es esto?"; las frases del doblaje, solo si usas tu llave de IA para la voz | Solo cuando lo pides |
 | VirusTotal (opcional) | La huella (hash) del archivo descargado, nunca el archivo | Al terminar una descarga |
 | ip-api.com | Las IP de los servidores de la página, para dibujar el mapa | Al abrir el escáner |
 | Quad9 (opcional) | Los nombres de las páginas que visitas (DNS seguro) | Si activas el DNS seguro |

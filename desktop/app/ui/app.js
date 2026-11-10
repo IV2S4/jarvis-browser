@@ -952,3 +952,46 @@ nivelVoz = function (v) {   // eslint-disable-line no-func-assign
 
 // ⬆ actualización lista: clic = actualizar ahora (se instala y vuelve a abrirse solo) [04-nov]
 $('act-chip').addEventListener('click', () => { $('act-chip').textContent = '⬆ ' + T('ACTUALIZANDO…', 'UPDATING…'); H('actualizar-ya'); });
+
+// ════ 🗣 Doblaje en vivo [09-nov]: la voz que lee los subtítulos traducidos del video ════
+// Siempre una voz NATIVA del idioma (pedido del usuario): 1) la voz de Windows de ese idioma, si está instalada;
+// 2) la voz de tu IA (OpenAI o Gemini) hablando como nativo; 3) si no hay ninguna, solo subtítulos (nunca con acento extranjero).
+const doblajeUI = { lang: 'es', cola: [], sonando: false, turno: 0, audio: null, nube: true, avisado: false };
+function doblajeCallar() { doblajeUI.turno++; doblajeUI.cola = []; doblajeUI.sonando = false; try { speechSynthesis.cancel(); } catch { /* */ } if (doblajeUI.audio) { try { doblajeUI.audio.pause(); } catch { /* */ } doblajeUI.audio = null; } }
+function doblajeVoz() { return speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith(doblajeUI.lang)); }
+async function doblajeHablar() {
+  const yo = doblajeUI.turno; doblajeUI.sonando = true;
+  while (doblajeUI.cola.length && yo === doblajeUI.turno) {
+    const t = doblajeUI.cola.shift();
+    const bytes = await H('tts-doblaje', { texto: t, lang: doblajeUI.lang }); if (yo !== doblajeUI.turno) break;
+    if (!bytes) { doblajeUI.nube = false; doblajeSinVoz(); break; }
+    await sonar(bytes, t, (a) => { doblajeUI.audio = a; });
+  }
+  if (yo === doblajeUI.turno) doblajeUI.sonando = false;
+}
+function doblajeSinVoz() {
+  if (doblajeUI.avisado) return; doblajeUI.avisado = true;
+  const n = ({ es: T('español', 'Spanish'), en: T('inglés', 'English'), pt: T('portugués', 'Portuguese'), fr: T('francés', 'French'), de: T('alemán', 'German'), it: T('italiano', 'Italian') })[doblajeUI.lang] || doblajeUI.lang;
+  msg2('j', T(`🗣 No tengo una voz nativa en ${n}, así que te dejo solo los subtítulos traducidos (para no leerlos con acento extranjero). Para escucharlo doblado: instala gratis la voz en ${n} de Windows (Configuración › Hora e idioma › Voz › Agregar voces) o pon tu llave de OpenAI o Gemini en Configuración.`,
+    `🗣 I don't have a native ${n} voice, so I'm leaving only the translated subtitles (rather than reading them with a foreign accent). To hear it dubbed: install Windows' free ${n} voice (Settings › Time & language › Speech › Add voices) or add your OpenAI or Gemini key in Settings.`));
+}
+function doblajeDecir(t) {
+  const voces = doblajeVoz();
+  if (voces.length) {   // voz de Windows del idioma: al momento y sin internet
+    if (speechSynthesis.pending) speechSynthesis.cancel();   // se quedó atrás: salta a lo más nuevo
+    const u = new SpeechSynthesisUtterance(t);
+    const v = voces.find((x) => /natural|online/i.test(x.name)) || voces[0]; u.voice = v; u.lang = v.lang;
+    u.rate = speechSynthesis.speaking ? 1.3 : 1.12; speechSynthesis.speak(u);
+    return;
+  }
+  if (!doblajeUI.nube) return doblajeSinVoz();
+  doblajeUI.cola.push(t); if (doblajeUI.cola.length > 2) doblajeUI.cola.splice(0, doblajeUI.cola.length - 2);
+  if (!doblajeUI.sonando) doblajeHablar();
+}
+window.nav.en('doblaje', (d) => {
+  if (!d) return;
+  if (d.lang) doblajeUI.lang = String(d.lang).slice(0, 2).toLowerCase();
+  if (d.on === true) { doblajeUI.nube = true; doblajeUI.avisado = false; }
+  if (d.on === false || d.callar) { doblajeCallar(); return; }
+  for (const l of d.lineas || []) doblajeDecir(l);
+});

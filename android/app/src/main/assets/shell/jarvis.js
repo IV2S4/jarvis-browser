@@ -68,7 +68,8 @@ window.alArrancar.push(async () => {
     .map(([k, t]) => `<button data-q="${k}">${t}</button>`).join('');
   $('grid-pagina').innerHTML = [['resumir', '📝', T('Resumir', 'Summarize')], ['puntos', '📌', T('Puntos clave', 'Key points')], ['traducir', '🌐', T('Traducir', 'Translate')], ['leer', '🔊', T('Leer en voz alta', 'Read aloud')],
     ['ves', '👁', T('¿Qué ves?', 'What do you see?')], ['foto', '📸', T('Foto', 'Photo')], ['vigilar', '🔔', T('Vigilar precio', 'Watch price')], ['cambios', '👀', T('Vigilar cambios', 'Watch changes')],
-    ['telefono', '📱', T('Al teléfono', 'Send to phone')], ['subtitulos', '💬', T('Subtítulos YT', 'YT subtitles')], ['pip', '▣', T('Video flotante', 'Floating video')], ['buscar', '🔎', T('Buscar', 'Find in page')]]
+    ['telefono', '📱', T('Al teléfono', 'Send to phone')], ['subtitulos', '💬', T('Subtítulos YT', 'YT subtitles')], ['pip', '▣', T('Video flotante', 'Floating video')], ['buscar', '🔎', T('Buscar', 'Find in page')],
+    ['doblar', '🗣', T('Doblar video', 'Dub video')], ['camara', '📸', T('¿Qué es esto?', 'What is this?')]]
     .map(([k, i, t]) => `<button data-a="${k}">${i}<span>${t}</span></button>`).join('');
 });
 $('chips-chat').addEventListener('click', (ev) => {
@@ -91,6 +92,9 @@ $('grid-pagina').addEventListener('click', async (ev) => {
   else if (k === 'subtitulos') { const r = await enPaginaAsync(jsSubtitulos(IDIOMA, true, false)); decir(r && r.ok ? T('Subtítulos traducidos puestos ✓', 'Translated subtitles on ✓') : T('Abre un video de YouTube primero.', 'Open a YouTube video first.')); }
   else if (k === 'pip') { cerrarCapa('panel'); H('pip'); }
   else if (k === 'buscar') { cerrarCapa('panel'); abrirBuscar(); }
+  else if (k === 'doblar') { decir(T('Preparando el doblaje…', 'Starting dubbing…')); const r = DOB.id ? (pararDoblaje(), { ok: true, estado: 'off' }) : await doblaje(true, IDIOMA);
+    decir(r.ok ? (r.estado === 'off' ? T('Doblaje apagado', 'Dubbing off') : r.estado === 'on' ? T('🗣 Doblaje en vivo encendido. Toca otra vez para apagarlo.', '🗣 Live dubbing on. Tap again to turn it off.') : T('Hay un anuncio: el doblaje empieza solo cuando termine.', 'An ad is playing: dubbing starts by itself when it ends.')) : String(r.error)); }
+  else if (k === 'camara') { pestPanel('chat'); chatear(T('¿Qué es esto que te enseño con la cámara? Dime qué es y búscalo.', 'What is this I\'m showing you with the camera? Tell me what it is and search it.')); }
 });
 
 // ── leer la página ──
@@ -260,6 +264,15 @@ async function herramienta(n, a) {
     case 'send_to_phone': return { salida: await enviarTelefono({ captura: a.what === 'screenshot', nota: a.note, silencioso: true }) };
     case 'youtube_subtitles': { const r = await enPaginaAsync(jsSubtitulos((a.language || IDIOMA).slice(0, 2), a.on !== false, false)); return { salida: r || { ok: false } }; }
     case 'watch_page': return { salida: await vigilarActual(a.what === 'changes' ? 'cambios' : 'precio', a.target_price) };
+    case 'browser_memory': {   // 🧠 [09-nov]
+      if (cfg.memoriaNavegador === false || !cfg.guardarHistorial) return { salida: { ok: false, error: 'Browser memory is turned off in Settings.' } };
+      const l = buscarRecuerdos(a.query || ''); return { salida: { ok: true, total: l.length, paginas: l } };
+    }
+    case 'live_dubbing': return { salida: await doblaje(a.on !== false, a.language) };   // 🗣 [09-nov]
+    case 'look_through_camera': {   // 📸 [09-nov]
+      const r = await fotoConCamara(); if (!r.ok) return { salida: r };
+      return { salida: { ok: true, nota: 'Photo from the phone camera. Say what it is and search it with web_search if useful.' }, imagen: { mime: 'image/jpeg', data: r.data } };
+    }
     case 'browser_history': { const desde = a.days ? Date.now() - a.days * 864e5 : 0; const q = String(a.query || '').toLowerCase();
       const l = historial.filter((h) => h.t >= desde && (!q || (h.titulo + h.url).toLowerCase().includes(q))).slice(-60).reverse().map((h) => ({ cuando: new Date(h.t).toLocaleString(), titulo: h.titulo, url: h.url, busqueda: busquedaDe(h.url) || undefined }));
       return { salida: { ok: true, total: l.length, items: l } }; }

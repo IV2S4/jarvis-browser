@@ -5,7 +5,7 @@ const C = (accion, d) => window.navConfig.hacer(accion, d);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let cfg = {};
 const INTERRUPTORES = ['bloquearRastreadores', 'soloHttps', 'dnsSeguro', 'noRastrear', 'bloquearEmergentes', 'preguntarPermisos',
-  'guardarHistorial', 'borrarAlCerrar', 'preguntarDonde', 'avisarProgramas', 'controlJarvis', 'panelAlAbrir', 'bloquearAnuncios', 'conectarJarvis', 'vozRespuestas', 'modoGaming', 'pestanasVerticales', 'vozSiempre', 'subtitulosAuto', 'escaner', 'efectos', 'sonidosUI', 'monitorSistema', 'clipTelefono', 'cerebroLocal', 'localPrimero', 'localArrancar', 'escanerDescargas', 'terminal', 'centroMando', 'memoriaJarvis', 'gestos', 'gestosVista', 'dictado', 'documentos', 'actualizarAuto'];
+  'guardarHistorial', 'borrarAlCerrar', 'preguntarDonde', 'avisarProgramas', 'controlJarvis', 'panelAlAbrir', 'bloquearAnuncios', 'conectarJarvis', 'vozRespuestas', 'modoGaming', 'pestanasVerticales', 'vozSiempre', 'subtitulosAuto', 'escaner', 'efectos', 'sonidosUI', 'monitorSistema', 'clipTelefono', 'cerebroLocal', 'localPrimero', 'localArrancar', 'escanerDescargas', 'terminal', 'centroMando', 'memoriaJarvis', 'gestos', 'gestosVista', 'camaraPausa', 'camaraGuardian', 'lanzarTelefono', 'memoriaNavegador', 'doblajeEnVivo', 'buscaLoQueVes', 'dictado', 'documentos', 'actualizarAuto'];
 const NOMBRE_PERMISO = { media: 'Cámara y micrófono', geolocation: 'Ubicación', notifications: 'Notificaciones', midi: 'Instrumentos MIDI',
   'clipboard-read': 'Leer el portapapeles', 'display-capture': 'Grabar la pantalla', hid: 'Dispositivos USB', serial: 'Puertos serie', usb: 'USB' };
 

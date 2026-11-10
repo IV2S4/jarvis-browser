@@ -2,7 +2,8 @@
 // JARVIS Browser · Android — barras, pestañas, sugerencias, favoritos, historial, menús [04-nov]
 const INICIO = 'https://appassets.androidplatform.net/assets/inicio/index.html';
 const PRED = { idioma: 'en', buscador: 'google', tema: 'cian', guardarHistorial: true, bloquear: true, monitor: true, pipAuto: true, vozRespuestas: false, vozMotor: 'sistema',
-  ordenIA: ['gemini', 'claude', 'openai'], memoriaJarvis: true, escaner: true, sonidos: true, efectos: true, telegramChat: null, telegramBot: null, qwenPC: '', localActivo: false, vigilar: true };
+  ordenIA: ['gemini', 'claude', 'openai'], memoriaJarvis: true, escaner: true, sonidos: true, efectos: true, telegramChat: null, telegramBot: null, qwenPC: '', localActivo: false, vigilar: true,
+  camaraPausa: true, camaraGuardian: true, memoriaNavegador: true, doblajeEnVivo: true, buscaLoQueVes: true };   // [09-nov] funciones inteligentes
 let cfg = { ...PRED };
 let E = { pestanas: [], activa: 0, url: '' };
 let favoritos = []; let historial = []; let memoria = [];
@@ -242,7 +243,7 @@ function pantallaLista(titulo, items, alTocar, alBorrar) {
 function verFavoritos() { pantallaLista(T('FAVORITOS', 'BOOKMARKS'), favoritos.map((f) => ({ ...f, ico: '★' })), (u) => ir(u)); }
 function verHistorial() {
   const l = [...historial].reverse().map((h) => ({ ...h, cuando: new Date(h.t).toLocaleString(IDIOMA === 'es' ? 'es-PR' : 'en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }));
-  pantallaLista(T('HISTORIAL', 'HISTORY'), l, (u) => ir(u), () => { historial = []; Datos.guardar('historial', historial); });
+  pantallaLista(T('HISTORIAL', 'HISTORY'), l, (u) => ir(u), () => { historial = []; Datos.guardar('historial', historial); if (typeof borrarRecuerdos === 'function') borrarRecuerdos(); });
 }
 
 // ── mantener pulsado un enlace o una imagen ──

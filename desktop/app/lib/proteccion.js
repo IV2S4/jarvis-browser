@@ -71,6 +71,12 @@ const PREDETERMINADA = {
   gestos: false,                  // control con gestos (cámara de la PC o del celular)
   camaraGestos: '',               // vacío = la cámara predeterminada
   gestosVista: true,              // mini cámara con la mano dibujada en la barra de abajo
+  camaraPausa: true,              // [09-nov] con la cámara encendida: si te vas, el video se pausa (y sigue al volver)
+  camaraGuardian: true,
+  lanzarTelefono: true,           // [09-nov] ✊ agarrar la página y 🖐 lanzarla → te llega al teléfono
+  memoriaNavegador: true,         // [09-nov] guarda un pedacito del texto de cada página (solo en esta PC) para encontrarla después
+  doblajeEnVivo: true,            // [09-nov] «Jarvis, dobla este video»: lee en voz alta los subtítulos traducidos
+  buscaLoQueVes: true,            // [09-nov] «Jarvis, ¿qué es esto?» enseñándole algo a la cámara           // [09-nov] con la cámara encendida: si otra persona mira tu pantalla, la página se tapa
   carpetaClips: '',               // vacío = buscar en Vídeos              // escuchar «Jarvis…» sin tocar el micrófono (se enciende en Configuración)               // al abrir un juego: pestañas de fondo dormidas y prioridad baja [04-nov]
   permisos: {},                   // { "sitio.com": { media: true, geolocation: false } }
   emergentesPermitidas: {},       // { "sitio.com": true }
